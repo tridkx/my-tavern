@@ -4,7 +4,7 @@ import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import fs from 'node:fs';
 import path from 'node:path';
-import { IS_PROD, PUBLIC_DIR, UPLOAD_DIR } from './config.js';
+import { CORS_ORIGIN, IS_PROD, PUBLIC_DIR, UPLOAD_DIR } from './config.js';
 import { isAuthenticated, isSecured, registerAuthRoutes } from './auth.js';
 import { registerConnectionRoutes } from './routes/connections.js';
 import { registerCharacterRoutes } from './routes/characters.js';
@@ -19,11 +19,31 @@ import { seedConnections } from './seed.js';
 export async function buildApp() {
   const app = Fastify({ logger: true, bodyLimit: 20 * 1024 * 1024 });
 
-  await app.register(cors, { origin: true, credentials: true });
+  // 生产/公网建议通过 CORS_ORIGIN 显式白名单；默认保持兼容（反射任意来源）
+  await app.register(cors, {
+    origin: CORS_ORIGIN.length > 0 ? CORS_ORIGIN : true,
+    credentials: true,
+  });
   await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
-  await app.register(fastifyStatic, { root: UPLOAD_DIR, prefix: '/media/', decorateReply: false });
+  await app.register(fastifyStatic, {
+    root: UPLOAD_DIR,
+    prefix: '/media/',
+    decorateReply: false,
+    setHeaders(res) {
+      // 上传内容一律不嗅探，且不允许被嵌入到第三方页面
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-Frame-Options', 'DENY');
+    },
+  });
 
   seedConnections();
+
+  // 全局安全响应头：禁止嗅探与 iframe 嵌入
+  app.addHook('onSend', async (_req, reply, payload) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
+    reply.header('X-Frame-Options', 'DENY');
+    return payload;
+  });
 
   app.addHook('preHandler', async (req, reply) => {
     const url = req.url.split('?')[0];
@@ -60,7 +80,8 @@ export async function buildApp() {
       return reply.code(400).send({ error: err.message });
     }
     app.log.error(err);
-    return reply.code(500).send({ error: err?.message || '服务器内部错误' });
+    // 不向客户端回显内部错误细节（SQL 语句、文件路径、堆栈等）
+    return reply.code(500).send({ error: '服务器内部错误' });
   });
 
   return app;

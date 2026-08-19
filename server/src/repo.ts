@@ -227,7 +227,8 @@ export function deleteWorldbook(id: string): boolean {
 }
 
 export function listWorldbookEntries(worldbookId: string): WorldbookEntry[] {
-  return all<any>('SELECT * FROM worldbook_entries WHERE worldbook_id = ? ORDER BY order_index, created_at', worldbookId).map(
+  // worldbook_entries 表没有 created_at 列，用 rowid 保持插入顺序稳定
+  return all<any>('SELECT * FROM worldbook_entries WHERE worldbook_id = ? ORDER BY order_index, rowid', worldbookId).map(
     (r) => ({
       ...r,
       key: parseJson<string[]>(r.key, []),
@@ -381,7 +382,10 @@ export function deleteMessage(id: string): boolean {
 export function deleteMessagesAfter(chatId: string, messageId: string) {
   const msg = getMessage(messageId);
   if (!msg) return;
-  run("DELETE FROM messages WHERE chat_id = ? AND created_at >= ?", chatId, msg.created_at);
+  // 用 rowid 精确定位，避免同秒 created_at 相等导致误删
+  const row = get<{ rowid: number }>('SELECT rowid FROM messages WHERE id = ?', messageId);
+  if (!row) return;
+  run('DELETE FROM messages WHERE chat_id = ? AND rowid >= ?', chatId, row.rowid);
 }
 
 export function deleteMessagesAfterExclusive(chatId: string, messageId: string) {

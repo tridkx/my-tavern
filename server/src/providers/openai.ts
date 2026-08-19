@@ -1,5 +1,20 @@
 import type { ChatCompletionMessage, ChatCompletionRequest, Connection } from '../types.js';
 import { resolveApiKey } from './presets.js';
+import { ALLOW_PRIVATE_BASE_URLS, OUTBOUND_TIMEOUT_MS } from '../config.js';
+import { assertPublicHost } from '../net.js';
+
+/** 可选 SSRF 防护：默认关闭，开启时校验 base_url 的 host 非私网地址。 */
+async function assertBaseUrlAllowed(baseUrl: string) {
+  if (ALLOW_PRIVATE_BASE_URLS) return;
+  const u = new URL(baseUrl);
+  await assertPublicHost(u.hostname);
+}
+
+/** 给请求叠加超时（与调用方的 abort signal 合并）。 */
+function withTimeout(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(OUTBOUND_TIMEOUT_MS);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
 
 function endpoint(baseUrl: string, path: string): string {
   const base = (baseUrl || '').replace(/\/+$/, '');
@@ -48,7 +63,7 @@ export async function completeChat(
     method: 'POST',
     headers: headers(connection),
     body: JSON.stringify(buildBody(connection, messages, { ...opts, stream: false })),
-    signal,
+    signal: withTimeout(signal),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -71,7 +86,7 @@ export async function* streamChat(
     method: 'POST',
     headers: headers(connection),
     body: JSON.stringify(buildBody(connection, messages, { ...opts, stream: true })),
-    signal,
+    signal: withTimeout(signal),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -113,6 +128,7 @@ export async function generateImage(
   opts: { size?: string; n?: number; response_format?: 'url' | 'b64_json' } = {},
 ): Promise<{ url?: string; b64_json?: string; revised_prompt?: string }[]> {
   const apiKey = resolveApiKey(connection);
+  await assertBaseUrlAllowed(connection.base_url);
   const body: Record<string, unknown> = {
     model: connection.model,
     prompt,
@@ -128,6 +144,7 @@ export async function generateImage(
       ...(connection.extra_headers || {}),
     },
     body: JSON.stringify(body),
+    signal: withTimeout(),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -146,6 +163,7 @@ export async function generateSpeech(
   opts: { voice?: string; speed?: number; response_format?: string } = {},
 ): Promise<Buffer> {
   const apiKey = resolveApiKey(connection);
+  await assertBaseUrlAllowed(connection.base_url);
   const body: Record<string, unknown> = {
     model: connection.model,
     input: text,
@@ -161,6 +179,7 @@ export async function generateSpeech(
       ...(connection.extra_headers || {}),
     },
     body: JSON.stringify(body),
+    signal: withTimeout(),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');

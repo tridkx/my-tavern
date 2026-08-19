@@ -52,7 +52,22 @@ npm start
 | `HOST` | 监听地址，默认 `0.0.0.0` |
 | `ACCESS_TOKEN` | 访问口令，留空表示不开启登录（公网部署务必设置） |
 | `MY_TAVERN_DATA` | 数据目录，默认项目下 `data/` |
+| `CORS_ORIGIN` | 允许跨域的来源（逗号分隔，如 `https://a.com,https://b.com`）。留空则允许任意来源；生产建议显式设置 |
+| `COOKIE_SECURE` | 设为 `1` 时登录 Cookie 增加 `Secure` 标志并使用 `__Host-` 前缀（仅在全 HTTPS 下启用） |
+| `LOGIN_MAX_ATTEMPTS` | 登录限流：单个 IP 在窗口内允许的失败次数，默认 `10`；`0` 关闭 |
+| `LOGIN_WINDOW_MS` | 登录限流窗口，默认 `900000`（15 分钟） |
+| `OUTBOUND_TIMEOUT_MS` | 出站模型请求超时，默认 `120000`（120 秒） |
+| `MAX_CONCURRENT_GENERATIONS` | 并发生成上限，超出返回 429，默认 `8` |
+| `ALLOW_PRIVATE_BASE_URLS` | 设为 `false` 时拒绝把请求发往私网/环回地址（防 SSRF）；默认允许以兼容本地 Ollama / LM Studio / vLLM |
 | `DEEPSEEK_API_KEY` / `OPENCODE_GO_API_KEY` / ... | 首次启动时会自动创建对应预设连接 |
+
+### 安全配置建议（公网部署）
+
+1. **必须设置 `ACCESS_TOKEN`**；服务启动时若检测到未设置口令且监听地址不是回环地址，会打印醒目警告。
+2. 全部流量走 HTTPS（Caddy/Nginx 反代），并设置 `COOKIE_SECURE=1`，让登录 Cookie 只通过加密连接传输。
+3. 设置 `CORS_ORIGIN=你的域名`，收紧跨域来源。
+4. 上传仅接受图片（png/jpg/gif/webp）与音频（mp3/ogg/wav/flac/m4a），服务端按魔数校验真实类型；上传内容一律 `nosniff`，杜绝 HTML/SVG 存储型 XSS。
+5. 如果不需要连接本地模型（Ollama/LM Studio），可设 `ALLOW_PRIVATE_BASE_URLS=false` 启用 SSRF 防护。
 
 ## Docker 部署
 

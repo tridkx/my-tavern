@@ -21,7 +21,7 @@ import {
 } from '../repo.js';
 import { buildSingleTurnMessages, buildGroupTurnMessages, estimateTokens } from '../services/context.js';
 import { streamChat } from '../providers/openai.js';
-import { activeGenerations, abortGeneration } from '../active.js';
+import { activeGenerations, abortGeneration, tryRegisterGeneration } from '../active.js';
 import type { Connection } from '../types.js';
 
 const chatSchema = z.object({
@@ -231,7 +231,10 @@ export function registerChatRoutes(app: FastifyInstance) {
     });
 
     const controller = new AbortController();
-    activeGenerations.set(assistant.id, controller);
+    if (!tryRegisterGeneration(assistant.id, controller)) {
+      deleteMessage(assistant.id);
+      return reply.code(429).send({ error: '生成任务过多，请稍后再试' });
+    }
 
     reply.hijack();
     reply.raw.writeHead(200, {

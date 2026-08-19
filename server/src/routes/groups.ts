@@ -22,7 +22,7 @@ import {
 } from '../repo.js';
 import { buildGroupTurnMessages } from '../services/context.js';
 import { streamChat } from '../providers/openai.js';
-import { activeGenerations } from '../active.js';
+import { activeGenerations, tryRegisterGeneration } from '../active.js';
 import type { Connection } from '../types.js';
 
 const groupSchema = z.object({
@@ -193,7 +193,10 @@ export function registerGroupRoutes(app: FastifyInstance) {
     });
 
     const controller = new AbortController();
-    activeGenerations.set(assistant.id, controller);
+    if (!tryRegisterGeneration(assistant.id, controller)) {
+      deleteMessage(assistant.id);
+      return reply.code(429).send({ error: '生成任务过多，请稍后再试' });
+    }
 
     reply.hijack();
     reply.raw.writeHead(200, {

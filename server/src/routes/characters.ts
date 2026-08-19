@@ -10,11 +10,16 @@ import {
 import { fromTavernV2, toTavernV2 } from '../services/tavern.js';
 import { generateCharacterDraft, polishCharacter } from '../services/aiTools.js';
 import { extractCharacterCard, embedCharaPng } from '../services/imageCard.js';
+import { isSafeHttpUrl } from '../net.js';
 
 const characterSchema = z.object({
   name: z.string().optional(),
   avatar_id: z.string().nullable().optional(),
-  avatar_url: z.string().nullable().optional(),
+  avatar_url: z
+    .string()
+    .nullable()
+    .optional()
+    .refine((v) => v == null || v === '' || isSafeHttpUrl(v), { message: '头像 URL 仅支持 http/https 或相对路径' }),
   description: z.string().optional(),
   personality: z.string().optional(),
   scenario: z.string().optional(),

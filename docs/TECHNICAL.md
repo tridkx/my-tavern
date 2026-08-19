@@ -29,8 +29,9 @@ my-tavern/
 │   │   ├── index.ts        # 入口：启动 HTTP 服务
 │   │   ├── app.ts          # 组装 Fastify 插件、路由、静态资源、鉴权
 │   │   ├── config.ts       # 路径、端口、环境变量
-│   │   ├── auth.ts         # ACCESS_TOKEN 登录/鉴权
-│   │   ├── active.ts       # 流式生成 AbortController 注册表
+│   │   ├── auth.ts         # ACCESS_TOKEN 登录/鉴权（限流、恒定时间比较）
+│   │   ├── active.ts       # 流式生成 AbortController 注册表（并发生成上限）
+│   │   ├── net.ts          # URL/私网地址校验（防 SSRF、URL 协议白名单）
 │   │   ├── seed.ts         # 首次启动根据环境变量创建默认连接
 │   │   ├── types.ts        # 实体与 OpenAI 请求类型
 │   │   ├── db/
@@ -316,9 +317,15 @@ npm run build
 
 ## 11. 安全注意事项
 
-- `ACCESS_TOKEN` 是公网部署的第一道防线；生产环境务必设置。
+- `ACCESS_TOKEN` 是公网部署的第一道防线；生产环境务必设置。启动时若未设置且监听地址非回环，会打印醒目警告。
 - API Key 存储在后端 SQLite/环境变量，`/api/connections` 返回时已脱敏（`api_key` 为空，`has_api_key` 表示是否存在）。
-- 如果通过公网直接暴露 3000 端口，建议用 Nginx/Caddy 加 HTTPS，并参考 `deploy/` 示例关闭 SSE 缓冲。
+- 如果通过公网直接暴露 3000 端口，建议用 Nginx/Caddy 加 HTTPS，并参考 `deploy/` 示例关闭 SSE 缓冲；HTTPS 下建议设 `COOKIE_SECURE=1`（Cookie 加 `Secure` 并启用 `__Host-` 前缀）。
+- 生产建议设 `CORS_ORIGIN=你的域名` 收紧跨域来源；默认允许任意来源（兼容既有部署）。
+- 登录接口有限流（默认 15 分钟窗口内 10 次失败，按 IP + 全局兜底），口令比较使用恒定时间算法。
+- 媒体上传只接受图片（png/jpg/gif/webp）与音频（mp3/ogg/wav/flac/m4a），服务端按魔数校验真实类型并以嗅探结果命名存储；`/media` 静态响应带 `nosniff` 与 `X-Frame-Options: DENY`。API 响应不回传服务器绝对路径（`file_path`）。
+- `base_url` 完全由用户配置，出站请求支持超时（`OUTBOUND_TIMEOUT_MS`，默认 120s）。若不需要本地模型（Ollama/LM Studio），设 `ALLOW_PRIVATE_BASE_URLS=false` 可拒绝发往私网/环回地址的请求（防 SSRF）。
+- 未预期的 500 错误只返回通用文案，内部细节仅记录在服务端日志。
+- 前端启用 CSP（`web/index.html`），消息渲染全部走文本插值（无 `v-html`），会话 Cookie 为 `HttpOnly` + `SameSite=Lax`。
 - `data/` 包含用户数据和 API Key，必须保持 gitignored，不要提交。
 
 ## 12. 已知限制与后续方向
