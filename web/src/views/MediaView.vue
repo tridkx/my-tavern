@@ -1,0 +1,147 @@
+<template>
+  <div class="page">
+    <div class="row">
+      <h1>资源库</h1>
+      <span class="spacer" />
+      <button @click="showUpload = true">上传</button>
+      <button @click="showUrl = true">添加 URL</button>
+    </div>
+
+    <div class="tabs row">
+      <button v-for="k in kinds" :key="k" :class="{ primary: kind === k }" @click="kind = k">{{ labels[k] }}</button>
+    </div>
+
+    <div v-if="showUpload" class="card" style="margin-top: 12px">
+      <h3>上传文件</h3>
+      <label>资源类型</label>
+      <select v-model="uploadKind">
+        <option v-for="k in kinds" :key="k" :value="k">{{ labels[k] }}</option>
+      </select>
+      <label>名称（可选）</label>
+      <input v-model="uploadName" />
+      <input ref="fileInput" type="file" style="margin-top: 8px" />
+      <div class="row" style="margin-top: 10px">
+        <button class="primary" @click="upload">上传</button>
+        <button @click="showUpload = false">取消</button>
+      </div>
+    </div>
+
+    <div v-if="showUrl" class="card" style="margin-top: 12px">
+      <h3>添加 URL</h3>
+      <label>资源类型</label>
+      <select v-model="urlKind">
+        <option v-for="k in kinds" :key="k" :value="k">{{ labels[k] }}</option>
+      </select>
+      <label>URL</label>
+      <input v-model="urlValue" placeholder="https://..." />
+      <div class="row" style="margin-top: 10px">
+        <button class="primary" @click="addUrl">添加</button>
+        <button @click="showUrl = false">取消</button>
+      </div>
+    </div>
+
+    <div class="media-grid">
+      <div v-for="m in filtered" :key="m.id" class="card media-card">
+        <img v-if="isImage(m)" :src="m.url || m.file_path" />
+        <audio v-else-if="m.kind === 'voice'" :src="m.url" controls style="width: 100%" />
+        <div class="muted" style="margin-top: 6px">{{ m.name }}</div>
+        <div class="row" style="margin-top: 6px">
+          <button @click="copyUrl(m)">复制</button>
+          <button @click="remove(m.id)">删除</button>
+        </div>
+      </div>
+    </div>
+    <p v-if="!filtered.length" class="empty">暂无资源</p>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref } from 'vue';
+import { useAppStore } from '@/stores/app';
+import { api } from '@/api/client';
+
+const app = useAppStore();
+const kind = ref('image');
+const showUpload = ref(false);
+const showUrl = ref(false);
+const uploadKind = ref('image');
+const uploadName = ref('');
+const urlKind = ref('image');
+const urlValue = ref('');
+const fileInput = ref<HTMLInputElement>();
+
+const kinds = ['background', 'avatar', 'image', 'voice'];
+const labels: Record<string, string> = {
+  background: '背景图',
+  avatar: '头像',
+  image: '图片',
+  voice: '语音',
+};
+
+const filtered = computed(() => app.media.filter((m) => m.kind === kind.value));
+
+onMounted(() => app.loadAll());
+
+function isImage(m: any) {
+  return m.kind !== 'voice';
+}
+
+async function upload() {
+  const file = fileInput.value?.files?.[0];
+  if (!file) return alert('请选择文件');
+  const fd = new FormData();
+  fd.append('kind', uploadKind.value);
+  fd.append('name', uploadName.value);
+  fd.append('file', file);
+  const res = await fetch('/api/media/upload', { method: 'POST', credentials: 'include', body: fd });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return alert(data.error || '上传失败');
+  }
+  showUpload.value = false;
+  uploadName.value = '';
+  await app.refreshMedia();
+}
+
+async function addUrl() {
+  if (!urlValue.value) return;
+  await api.post('/api/media/from-url', { kind: urlKind.value, url: urlValue.value });
+  showUrl.value = false;
+  urlValue.value = '';
+  await app.refreshMedia();
+}
+
+async function remove(id: string) {
+  if (!confirm('确定删除？')) return;
+  await api.del(`/api/media/${id}`);
+  await app.refreshMedia();
+}
+
+async function copyUrl(m: any) {
+  const url = m.url || m.file_path || '';
+  try {
+    await navigator.clipboard.writeText(window.location.origin + url);
+    alert('已复制');
+  } catch {
+    prompt('复制链接', window.location.origin + url);
+  }
+}
+</script>
+
+<style scoped>
+.tabs {
+  margin: 12px 0;
+}
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.media-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #12172a;
+}
+</style>
