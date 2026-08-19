@@ -1,5 +1,7 @@
 # MyTavern · 精简版酒馆
 
+> 本项目由 AI 辅助完成。技术架构、数据模型、API 与维护指南见 [docs/TECHNICAL.md](docs/TECHNICAL.md)。
+
 一个面向自部署的精简版 SillyTavern：支持任意 OpenAI 兼容模型后端、角色卡与世界书、TTS 语音输出、图片生成、群聊（AI 同伴 / GM / AI 敌人）、移动端友好。
 
 ## 功能
@@ -62,6 +64,44 @@ docker compose up -d --build
 
 公网访问时建议在前面再加一层 HTTPS 反向代理（Caddy/Nginx），参考 `deploy/nginx.conf` 和 `deploy/Caddyfile`。注意代理需要关闭缓冲以支持 SSE 流式输出。
 
+## 如何更新已部署的实例
+
+### Docker Compose 方式
+
+```bash
+cd /path/to/my-tavern
+git pull
+docker compose up -d --build
+```
+
+- `git pull` 拉取最新代码。
+- `docker compose up -d --build` 重新构建镜像并重建容器。
+- `./data` 目录通过 volume 挂载，数据库与上传文件不会丢失。
+- 如果 `.env.example` 增加了新环境变量，记得同步到你的 `.env`。
+
+### 非 Docker 方式
+
+```bash
+cd /path/to/my-tavern
+git pull
+npm ci
+npm run build
+# 重启后端进程，例如 pm2 restart my-tavern 或 systemctl restart my-tavern
+```
+
+## 什么是反向代理？
+
+反向代理（Reverse Proxy）是放在公网用户和你的应用之间的一层服务器。用户访问 `https://your.domain.com`，反向代理再把请求转发给本机 `127.0.0.1:3000` 的 MyTavern。
+
+它主要解决：
+
+1. **HTTPS 加密**：用户通过 `https` 访问，数据加密传输。
+2. **隐藏真实端口/服务器**：公网只需开放 80/443。
+3. **SSE 流式支持**：Nginx/Caddy 正确配置后，AI 回复可以流式输出。
+4. **统一入口**：以后加多个服务时可以在同一域名下分发。
+
+示例见 `deploy/nginx.conf` 和 `deploy/Caddyfile`。
+
 ## 目录结构
 
 ```
@@ -72,6 +112,8 @@ server/          Fastify 后端
     routes/      REST/SSE 路由
     services/    上下文构建、AI 工具、Tavern 格式转换
 web/             Vue 3 前端
+docs/            技术文档
+deploy/          Nginx / Caddy 反代示例
 data/            SQLite 与上传资源（不入库）
 ```
 
