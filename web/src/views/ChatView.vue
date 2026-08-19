@@ -162,6 +162,9 @@
     </div>
 
     <div v-if="currentChat" class="composer">
+      <div v-if="cacheStats" class="cache-stats" title="模型返回的 usage 统计（各家字段名不同，能解析到才显示）">
+        本次生成：{{ cacheStats.hit }} 命中 / {{ cacheStats.miss }} 未命中 tokens · 缓存命中率 {{ cacheStats.rate }}%
+      </div>
       <textarea
         v-model="inputText"
         rows="2"
@@ -212,6 +215,19 @@ const backgrounds = computed(() => app.media.filter((m) => m.kind === 'backgroun
 const backgroundUrl = computed(() => {
   const b = backgrounds.value.find((x) => x.id === selectedBackground.value);
   return b?.url || '';
+});
+
+/** 归一化各家 usage 字段，计算缓存命中率；无法解析时返回 null 不显示。 */
+const cacheStats = computed(() => {
+  const u = chat.lastUsage as any;
+  if (!u) return null;
+  const hit =
+    u.prompt_cache_hit_tokens ?? u.cached_tokens ?? u.prompt_tokens_details?.cached_tokens ?? 0;
+  const miss =
+    u.prompt_cache_miss_tokens ?? (typeof u.prompt_tokens === 'number' ? Math.max(0, u.prompt_tokens - hit) : 0);
+  const total = hit + miss;
+  if (!total) return null;
+  return { hit, miss, rate: Math.round((hit / total) * 100) };
 });
 
 onMounted(async () => {

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { AUDIO_DIR, IMAGE_DIR, UPLOAD_DIR } from '../config.js';
 import { createMedia, deleteMedia, getMedia, listMedia } from '../repo.js';
 import { assertSafeUrl } from '../net.js';
+import { uploadLimiter } from '../active.js';
 
 const MEDIA_KINDS = ['background', 'avatar', 'image', 'voice'] as const;
 type MediaKind = (typeof MEDIA_KINDS)[number];
@@ -101,49 +102,61 @@ export function registerMediaRoutes(app: FastifyInstance) {
   });
 
   app.post('/api/media/upload', async (req, reply) => {
-    const parts = req.parts();
-    let kind: MediaKind = 'image';
-    let name = '';
-    let buffer: Buffer | null = null;
-    let filename = '';
-
-    for await (const part of parts) {
-      if (part.type === 'file') {
-        buffer = await part.toBuffer();
-        filename = part.filename || `${randomUUID()}.bin`;
-      } else if (part.type === 'field') {
-        if (part.fieldname === 'kind' && isMediaKind(String(part.value || ''))) kind = String(part.value) as MediaKind;
-        if (part.fieldname === 'name') name = String(part.value || '');
-      }
+    // 上传会整文件读入内存，先占并发额度，避免多个大文件同时进内存
+    if (!uploadLimiter.tryAcquire()) {
+      return reply.code(429).send({ error: '上传任务过多，请稍后再试' });
     }
-
-    if (!buffer) return reply.code(400).send({ error: '没有收到文件' });
-
-    const detected = detectFileType(buffer);
-    if (!detected) {
-      return reply.code(400).send({ error: '不支持的文件类型：仅允许图片(png/jpg/gif/webp)或音频(mp3/ogg/wav/flac/m4a)' });
+    try {
+      return await handleUpload(req, reply);
+    } finally {
+      uploadLimiter.release();
     }
-    // 请求的 kind 与文件真实类型必须匹配：voice 需要音频，其余需要图片
-    const wantsAudio = kind === 'voice';
-    if (detected.kind === 'audio' && !wantsAudio) {
-      return reply.code(400).send({ error: '音频文件只能作为语音资源上传' });
-    }
-    if (detected.kind === 'image' && wantsAudio) {
-      return reply.code(400).send({ error: '语音资源必须是音频文件' });
-    }
-
-    // 扩展名取自嗅探结果，而非用户文件名
-    const savedName = `${randomUUID()}.${detected.ext}`;
-    const filePath = path.join(dirForKind(kind), savedName);
-    fs.writeFileSync(filePath, buffer);
-    const rel = path.relative(UPLOAD_DIR, filePath).split(path.sep).join('/');
-    const media = createMedia({
-      kind,
-      name: name || filename,
-      file_path: filePath,
-      source: 'upload',
-      url: `/media/${rel}`,
-    });
-    return reply.code(201).send({ media: toPublic(media) });
   });
+}
+
+async function handleUpload(req: any, reply: any) {
+  const parts = req.parts();
+  let kind: MediaKind = 'image';
+  let name = '';
+  let buffer: Buffer | null = null;
+  let filename = '';
+
+  for await (const part of parts) {
+    if (part.type === 'file') {
+      buffer = await part.toBuffer();
+      filename = part.filename || `${randomUUID()}.bin`;
+    } else if (part.type === 'field') {
+      if (part.fieldname === 'kind' && isMediaKind(String(part.value || ''))) kind = String(part.value) as MediaKind;
+      if (part.fieldname === 'name') name = String(part.value || '');
+    }
+  }
+
+  if (!buffer) return reply.code(400).send({ error: '没有收到文件' });
+
+  const detected = detectFileType(buffer);
+  if (!detected) {
+    return reply.code(400).send({ error: '不支持的文件类型：仅允许图片(png/jpg/gif/webp)或音频(mp3/ogg/wav/flac/m4a)' });
+  }
+  // 请求的 kind 与文件真实类型必须匹配：voice 需要音频，其余需要图片
+  const wantsAudio = kind === 'voice';
+  if (detected.kind === 'audio' && !wantsAudio) {
+    return reply.code(400).send({ error: '音频文件只能作为语音资源上传' });
+  }
+  if (detected.kind === 'image' && wantsAudio) {
+    return reply.code(400).send({ error: '语音资源必须是音频文件' });
+  }
+
+  // 扩展名取自嗅探结果，而非用户文件名
+  const savedName = `${randomUUID()}.${detected.ext}`;
+  const filePath = path.join(dirForKind(kind), savedName);
+  fs.writeFileSync(filePath, buffer);
+  const rel = path.relative(UPLOAD_DIR, filePath).split(path.sep).join('/');
+  const media = createMedia({
+    kind,
+    name: name || filename,
+    file_path: filePath,
+    source: 'upload',
+    url: `/media/${rel}`,
+  });
+  return reply.code(201).send({ media: toPublic(media) });
 }

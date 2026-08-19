@@ -120,6 +120,13 @@ label {
   color: var(--muted);
 }
 
+.cache-stats {
+  font-size: 0.78em;
+  color: var(--muted);
+  margin-bottom: 4px;
+  text-align: right;
+}
+
 .empty {
   text-align: center;
   color: var(--muted);

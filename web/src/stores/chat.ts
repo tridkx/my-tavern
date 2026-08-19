@@ -9,6 +9,8 @@ export const useChatStore = defineStore('chat', {
     generating: false,
     streamingMessageId: '' as string,
     abortController: null as AbortController | null,
+    /** 最近一次生成的 usage（含缓存命中统计），null 表示尚无数据 */
+    lastUsage: null as any,
   }),
   actions: {
     async loadChat(chatId: string) {
@@ -20,6 +22,7 @@ export const useChatStore = defineStore('chat', {
     async sendSingle(text: string) {
       if (!this.chatId || this.generating) return;
       this.generating = true;
+      this.lastUsage = null;
       this.abortController = new AbortController();
       const userMsg = { id: `temp-${Date.now()}`, role: 'user', content: text, character_id: null, visible_to_player: 1, created_at: new Date().toISOString() };
       this.messages.push(userMsg);
@@ -40,6 +43,7 @@ export const useChatStore = defineStore('chat', {
               const idx = this.messages.findIndex((m) => m.id === data.messageId);
               if (idx >= 0) this.messages[idx] = data.message || this.messages[idx];
               this.streamingMessageId = '';
+              this.lastUsage = data.usage || null;
             },
             onError: (err, data) => {
               this.messages = this.messages.filter((m) => m.id !== data.messageId);
@@ -66,6 +70,7 @@ export const useChatStore = defineStore('chat', {
     async sendGroup(speakerId: string, text?: string) {
       if (!this.chatId || this.generating) return;
       this.generating = true;
+      this.lastUsage = null;
       this.abortController = new AbortController();
       if (text) {
         this.messages.push({ id: `temp-${Date.now()}`, role: 'user', content: text, character_id: null, visible_to_player: 1, created_at: new Date().toISOString() });
@@ -87,6 +92,7 @@ export const useChatStore = defineStore('chat', {
               const idx = this.messages.findIndex((m) => m.id === data.messageId);
               if (idx >= 0) this.messages[idx] = data.message || this.messages[idx];
               this.streamingMessageId = '';
+              this.lastUsage = data.usage || null;
             },
             onError: (err, data) => {
               this.messages = this.messages.filter((m) => m.id !== data.messageId);

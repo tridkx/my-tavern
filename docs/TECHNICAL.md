@@ -317,12 +317,13 @@ npm run build
 
 ## 11. 安全注意事项
 
-- `ACCESS_TOKEN` 是公网部署的第一道防线；生产环境务必设置。启动时若未设置且监听地址非回环，会打印醒目警告。
+- `ACCESS_TOKEN` 是公网部署的第一道防线；生产环境务必设置。启动时若未设置且监听地址非回环，会打印醒目警告；口令过短（<8 字符）且非回环监听时也会警告，公网部署建议 12 位以上随机口令。
 - API Key 存储在后端 SQLite/环境变量，`/api/connections` 返回时已脱敏（`api_key` 为空，`has_api_key` 表示是否存在）。
 - 如果通过公网直接暴露 3000 端口，建议用 Nginx/Caddy 加 HTTPS，并参考 `deploy/` 示例关闭 SSE 缓冲；HTTPS 下建议设 `COOKIE_SECURE=1`（Cookie 加 `Secure` 并启用 `__Host-` 前缀）。
 - 生产建议设 `CORS_ORIGIN=你的域名` 收紧跨域来源；默认关闭跨域（同源部署不受影响）。
 - 在 Nginx/Caddy 后部署时建议设 `TRUST_PROXY=1`，否则登录限流按代理 IP 统计。
 - 登录接口有限流（默认 15 分钟窗口内 10 次失败，按 IP + 全局兜底），口令比较使用恒定时间算法。
+- 聊天生成（`MAX_CONCURRENT_GENERATIONS`）、TTS/图片生成（`MAX_CONCURRENT_MEDIA_GENERATIONS`）、上传（`MAX_CONCURRENT_UPLOADS`）均有并发上限，超限返回 429，防止认证后并发消耗 API 额度与内存。
 - 媒体上传只接受图片（png/jpg/gif/webp）与音频（mp3/ogg/wav/flac/m4a），服务端按魔数校验真实类型并以嗅探结果命名存储；`/media` 静态响应带 `nosniff` 与 `X-Frame-Options: DENY`。API 响应不回传服务器绝对路径（`file_path`）。
 - `base_url` 完全由用户配置，出站请求支持超时（`OUTBOUND_TIMEOUT_MS`，默认 120s）。若不需要本地模型（Ollama/LM Studio），设 `ALLOW_PRIVATE_BASE_URLS=false` 可拒绝发往私网/环回地址的请求（防 SSRF）；聊天、图片、TTS 均会校验，并手动处理重定向避免绕过。
 - `api_key_env` 仅允许引用内置提供商预设的白名单环境变量，避免任意读取服务器环境变量外带。

@@ -21,7 +21,7 @@ import {
   updateMessage,
 } from '../repo.js';
 import { buildGroupTurnMessages } from '../services/context.js';
-import { streamChat } from '../providers/openai.js';
+import { streamChat, type StreamUsage } from '../providers/openai.js';
 import { activeGenerations, tryRegisterGeneration } from '../active.js';
 import type { Connection } from '../types.js';
 
@@ -170,7 +170,7 @@ export function registerGroupRoutes(app: FastifyInstance) {
       .parse(req.body || {});
 
     const chat = getChat(body.chatId);
-    if (!chat?.group_id) return reply.code(404).send({ error: '群聊会话不存在' });
+    if (!chat?.group_id || chat.mode !== 'group') return reply.code(404).send({ error: '群聊会话不存在' });
     const group = getGroup(chat.group_id);
     if (!group) return reply.code(404).send({ error: '群聊不存在' });
 
@@ -238,17 +238,20 @@ export function registerGroupRoutes(app: FastifyInstance) {
     const send = (obj: unknown) => reply.raw.write(`data: ${JSON.stringify(obj)}\n\n`);
 
     let content = '';
+    let usage: StreamUsage | undefined;
     try {
-      for await (const delta of streamChat(connection, messages, {}, controller.signal)) {
+      for await (const delta of streamChat(connection, messages, {}, controller.signal, (u) => {
+        usage = u;
+      })) {
         content += delta;
         send({ type: 'delta', messageId: assistant.id, delta });
       }
       const final = updateMessage(assistant.id, { content });
-      send({ type: 'done', messageId: assistant.id, message: final });
+      send({ type: 'done', messageId: assistant.id, message: final, usage });
     } catch (err: any) {
       if (content) {
         updateMessage(assistant.id, { content });
-        send({ type: 'done', messageId: assistant.id, message: getMessage(assistant.id), aborted: true });
+        send({ type: 'done', messageId: assistant.id, message: getMessage(assistant.id), aborted: true, usage });
       } else {
         deleteMessage(assistant.id);
         send({ type: 'error', messageId: assistant.id, error: err?.message || '生成失败', aborted: controller.signal.aborted });

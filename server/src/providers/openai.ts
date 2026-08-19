@@ -100,13 +100,30 @@ export async function completeChat(
 }
 
 /**
+ * 流式响应末尾的 usage 统计（各家字段命名不同，统一保留原始字段由前端归一化）。
+ * DeepSeek: prompt_cache_hit_tokens / prompt_cache_miss_tokens
+ * OpenAI:   cached_tokens（在 prompt_tokens_details 内）
+ */
+export interface StreamUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  prompt_cache_hit_tokens?: number;
+  prompt_cache_miss_tokens?: number;
+  cached_tokens?: number;
+  prompt_tokens_details?: { cached_tokens?: number };
+}
+
+/**
  * 流式调用 OpenAI 兼容 chat/completions，逐段 yield 文本增量。
+ * 流末尾的 usage chunk（含缓存命中统计）通过 onUsage 回调上报，调用方可在 done 事件中携带。
  */
 export async function* streamChat(
   connection: Connection,
   messages: ChatCompletionMessage[],
   opts: Partial<ChatCompletionRequest> = {},
   signal?: AbortSignal,
+  onUsage?: (usage: StreamUsage) => void,
 ): AsyncGenerator<string> {
   const res = await safeFetch(endpoint(connection.base_url, '/chat/completions'), {
     method: 'POST',
@@ -135,6 +152,10 @@ export async function* streamChat(
       if (payload === '[DONE]') return;
       try {
         const json = JSON.parse(payload);
+        // 各家在流末尾发 usage chunk：DeepSeek 是独立 chunk，OpenAI 是 choices 为空的最后一块
+        if (json?.usage && typeof json.usage === 'object' && Object.keys(json.usage).length > 0) {
+          onUsage?.(json.usage as StreamUsage);
+        }
         const delta = json?.choices?.[0]?.delta?.content;
         if (typeof delta === 'string' && delta) yield delta;
       } catch {

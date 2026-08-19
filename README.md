@@ -59,12 +59,14 @@ npm start
 | `LOGIN_WINDOW_MS` | 登录限流窗口，默认 `900000`（15 分钟） |
 | `OUTBOUND_TIMEOUT_MS` | 出站模型请求超时，默认 `120000`（120 秒） |
 | `MAX_CONCURRENT_GENERATIONS` | 并发生成上限，超出返回 429，默认 `8` |
+| `MAX_CONCURRENT_MEDIA_GENERATIONS` | TTS/图片生成并发上限，超出返回 429，默认 `4` |
+| `MAX_CONCURRENT_UPLOADS` | 上传并发上限（防止大文件同时读入内存），超出返回 429，默认 `4` |
 | `ALLOW_PRIVATE_BASE_URLS` | 设为 `false` 时拒绝把请求发往私网/环回地址（防 SSRF）；默认允许以兼容本地 Ollama / LM Studio / vLLM |
 | `DEEPSEEK_API_KEY` / `OPENCODE_GO_API_KEY` / ... | 首次启动时会自动创建对应预设连接 |
 
 ### 安全配置建议（公网部署）
 
-1. **必须设置 `ACCESS_TOKEN`**；服务启动时若检测到未设置口令且监听地址不是回环地址，会打印醒目警告。
+1. **必须设置 `ACCESS_TOKEN`**；服务启动时若检测到未设置口令且监听地址不是回环地址，会打印醒目警告。口令建议 12 位以上随机字符串（过短时启动会提示）。
 2. 全部流量走 HTTPS（Caddy/Nginx 反代），并设置 `COOKIE_SECURE=1`，让登录 Cookie 只通过加密连接传输。
 3. 设置 `CORS_ORIGIN=你的域名`，收紧跨域来源。
 4. 如果前面有 Nginx/Caddy 反向代理，设置 `TRUST_PROXY=1`，否则登录限流会按代理 IP 统计。

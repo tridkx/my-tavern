@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getConnection, getDefaultConnection } from '../repo.js';
 import { generateImage } from '../providers/openai.js';
+import { mediaGenLimiter } from '../active.js';
 
 export function registerImageRoutes(app: FastifyInstance) {
   app.post('/api/images/generate', async (req, reply) => {
@@ -18,6 +19,9 @@ export function registerImageRoutes(app: FastifyInstance) {
     const connection = body.connectionId ? getConnection(body.connectionId) : getDefaultConnection();
     if (!connection) return reply.code(400).send({ error: '没有可用的模型连接，请先在设置中添加连接' });
 
+    if (!mediaGenLimiter.tryAcquire()) {
+      return reply.code(429).send({ error: '生成任务过多，请稍后再试' });
+    }
     try {
       const data = await generateImage(connection, body.prompt, {
         size: body.size,
@@ -27,6 +31,8 @@ export function registerImageRoutes(app: FastifyInstance) {
       return { data };
     } catch (err: any) {
       return reply.code(502).send({ error: err.message || '图片生成失败' });
+    } finally {
+      mediaGenLimiter.release();
     }
   });
 }

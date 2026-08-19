@@ -20,7 +20,7 @@ import {
   updateMessage,
 } from '../repo.js';
 import { buildSingleTurnMessages, buildGroupTurnMessages, estimateTokens } from '../services/context.js';
-import { streamChat } from '../providers/openai.js';
+import { streamChat, type StreamUsage } from '../providers/openai.js';
 import { activeGenerations, abortGeneration, tryRegisterGeneration } from '../active.js';
 import type { Connection } from '../types.js';
 
@@ -215,6 +215,10 @@ export function registerChatRoutes(app: FastifyInstance) {
 
     const chat = getChat(body.chatId);
     if (!chat) return reply.code(404).send({ error: '会话不存在' });
+    // 群聊会话必须走 /api/chat/generate-group：单聊路径不会携带隐藏信息约束，会泄露敌人行动
+    if (chat.mode === 'group') {
+      return reply.code(400).send({ error: '这是群聊会话，请使用群聊生成接口' });
+    }
 
     const connection = resolveConnection(body.chatId, body.connectionId);
     if (!connection) return reply.code(400).send({ error: '没有可用的模型连接，请先在设置中添加连接' });
@@ -266,18 +270,21 @@ export function registerChatRoutes(app: FastifyInstance) {
     };
 
     let content = '';
+    let usage: StreamUsage | undefined;
     try {
-      for await (const delta of streamChat(connection, messages, {}, controller.signal)) {
+      for await (const delta of streamChat(connection, messages, {}, controller.signal, (u) => {
+        usage = u;
+      })) {
         content += delta;
         send({ type: 'delta', messageId: assistant.id, delta });
       }
       const final = updateMessage(assistant.id, { content });
-      send({ type: 'done', messageId: assistant.id, message: final });
+      send({ type: 'done', messageId: assistant.id, message: final, usage });
     } catch (err: any) {
       const aborted = controller.signal.aborted;
       if (content) {
         updateMessage(assistant.id, { content });
-        send({ type: 'done', messageId: assistant.id, message: getMessage(assistant.id), aborted: true });
+        send({ type: 'done', messageId: assistant.id, message: getMessage(assistant.id), aborted: true, usage });
       } else {
         deleteMessage(assistant.id);
         send({ type: 'error', messageId: assistant.id, error: err?.message || '生成失败', aborted });

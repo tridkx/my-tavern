@@ -22,7 +22,7 @@ export const ACCESS_TOKEN = process.env.ACCESS_TOKEN || '';
 export const PUBLIC_DIR = path.join(serverRoot, '..', 'web', 'dist');
 export const IS_PROD = process.env.NODE_ENV === 'production';
 
-/** 逗号分隔的允许跨域来源；留空表示允许任意来源（默认，兼容现有部署）。生产建议显式设置。 */
+/** 逗号分隔的允许跨域来源；留空表示关闭跨域（同源部署默认行为，前端不受影响）。生产建议显式设置。 */
 export const CORS_ORIGIN = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map((s) => s.trim())
@@ -40,6 +40,12 @@ export const OUTBOUND_TIMEOUT_MS = Number(process.env.OUTBOUND_TIMEOUT_MS || 120
 
 /** 并发生成的上限，超出返回 429。 */
 export const MAX_CONCURRENT_GENERATIONS = Number(process.env.MAX_CONCURRENT_GENERATIONS || 8);
+
+/** TTS / 图片生成的并发上限（防止认证后并发烧 API 额度），超出返回 429。 */
+export const MAX_CONCURRENT_MEDIA_GENERATIONS = Number(process.env.MAX_CONCURRENT_MEDIA_GENERATIONS || 4);
+
+/** 上传并发上限（每个上传会整文件读入内存，限制并发避免内存被耗尽），超出返回 429。 */
+export const MAX_CONCURRENT_UPLOADS = Number(process.env.MAX_CONCURRENT_UPLOADS || 4);
 
 /**
  * 设为 'false' 时拒绝把模型请求发往私网/环回/链路本地地址（防 SSRF）。
