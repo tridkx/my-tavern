@@ -74,7 +74,15 @@ function getToken(req: FastifyRequest): string {
   const cookie = req.headers.cookie || '';
   for (const part of cookie.split(';')) {
     const [k, ...v] = part.trim().split('=');
-    if (k === COOKIE_NAME) return v.join('=').trim();
+    if (k === COOKIE_NAME) {
+      let value = v.join('=').trim();
+      try {
+        value = decodeURIComponent(value);
+      } catch {
+        // 保持原样，避免损坏的编码值导致鉴权异常
+      }
+      return value;
+    }
   }
   return '';
 }

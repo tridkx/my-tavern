@@ -1,15 +1,22 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { createConnection, deleteConnection, getConnection, listConnections, updateConnection } from '../repo.js';
-import { getProviderPreset, PROVIDER_PRESETS } from '../providers/presets.js';
+import { ALLOWED_API_KEY_ENVS, getProviderPreset, PROVIDER_PRESETS } from '../providers/presets.js';
 import type { Connection } from '../types.js';
 
 const connectionSchema = z.object({
   name: z.string().optional(),
   provider: z.string().optional(),
-  base_url: z.string().optional(),
+  base_url: z
+    .string()
+    .optional()
+    .refine((v) => v === undefined || v === '' || /^https?:\/\//i.test(v), { message: '仅支持 http/https 地址' }),
   api_key: z.string().optional(),
-  api_key_env: z.string().nullable().optional(),
+  api_key_env: z
+    .string()
+    .nullable()
+    .optional()
+    .refine((v) => v == null || v === '' || ALLOWED_API_KEY_ENVS.has(v), { message: '不允许引用该环境变量' }),
   model: z.string().optional(),
   context_window: z.number().int().positive().optional(),
   max_tokens: z.number().int().positive().optional(),
@@ -25,7 +32,12 @@ const connectionSchema = z.object({
 
 function toPublic(conn: Connection) {
   const { api_key, ...rest } = conn;
-  return { ...rest, api_key: '', has_api_key: Boolean(api_key || (conn.api_key_env && process.env[conn.api_key_env])) };
+  const envKeyAllowed = conn.api_key_env ? ALLOWED_API_KEY_ENVS.has(conn.api_key_env) : false;
+  return {
+    ...rest,
+    api_key: '',
+    has_api_key: Boolean(api_key || (envKeyAllowed && process.env[conn.api_key_env!])),
+  };
 }
 
 export function registerConnectionRoutes(app: FastifyInstance) {

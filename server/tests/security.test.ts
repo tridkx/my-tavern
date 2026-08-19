@@ -68,6 +68,8 @@ describe('isSafeHttpUrl', () => {
     expect(isSafeHttpUrl('http://127.0.0.1:8080/x')).toBe(true);
     expect(isSafeHttpUrl('/media/images/abc.png')).toBe(true);
     expect(isSafeHttpUrl('not a url')).toBe(false);
+    // 协议相对 URL 不是同源相对路径，应拒绝
+    expect(isSafeHttpUrl('//evil.com/x.png')).toBe(false);
   });
 });
 

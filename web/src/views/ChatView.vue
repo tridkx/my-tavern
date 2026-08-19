@@ -5,7 +5,7 @@
         <option value="">选择会话…</option>
         <option v-for="ch in app.chats" :key="ch.id" :value="ch.id">{{ ch.title || '未命名会话' }}</option>
       </select>
-      <button @click="showContext = !showContext">上下文</button>
+      <button @click="toggleContext">上下文</button>
       <button @click="showNew = !showNew">新建</button>
     </div>
 
@@ -94,7 +94,13 @@
       <details>
         <summary>管理成员</summary>
         <div class="member-row" v-for="m in groupMembers" :key="m.id">
-          <span>{{ memberName(m.character_id) }} ({{ memberKind(m.kind) }})</span>
+          <span>{{ memberName(m.character_id) }}</span>
+          <select :value="m.kind" @change="updateMemberKind(m, ($event.target as HTMLSelectElement).value)">
+            <option value="player">玩家</option>
+            <option value="companion">AI同伴</option>
+            <option value="gm">GM</option>
+            <option value="enemy">AI敌人</option>
+          </select>
           <button @click="removeMember(m.id)">移除</button>
         </div>
         <div class="row" style="margin-top: 8px">
@@ -144,6 +150,7 @@
           </div>
           <div class="row msg-actions" style="margin-top: 4px">
             <button v-if="!editId || editId !== m.id" @click="startEdit(m)">编辑</button>
+            <button @click="toggleHidden(m)">{{ m.visible_to_player ? '隐藏' : '显示' }}</button>
             <button @click="forkMessage(m)">分支</button>
             <button @click="deleteAfter(m)">删除之后</button>
             <button @click="chat.regenerate(m.id)">重试</button>
@@ -264,6 +271,13 @@ async function createChat() {
       mode: 'single',
       character_id: newCharacterId.value,
     });
+    if (char?.first_mes) {
+      await api.post(`/api/chats/${chatData.chat.id}/messages`, {
+        role: 'assistant',
+        character_id: char.id,
+        content: char.first_mes,
+      });
+    }
   } else {
     const grp = app.groups.find((g) => g.id === newGroupId.value);
     chatData = await api.post('/api/chats', {
@@ -313,6 +327,11 @@ async function removeMember(id: string) {
   await api.del(`/api/group-members/${id}`);
   const res = await api.get(`/api/groups/${newGroupId.value || currentChat.value?.group_id}`);
   groupMembers.value = res.members || [];
+}
+
+async function updateMemberKind(m: any, kind: string) {
+  const res = await api.patch(`/api/group-members/${m.id}`, { kind });
+  Object.assign(m, res.member);
 }
 
 async function setAutoMode() {
@@ -416,6 +435,12 @@ function sendGroupNow() {
 function startEdit(m: any) {
   editId.value = m.id;
   editContent.value = m.content;
+}
+
+async function toggleHidden(m: any) {
+  const res = await api.patch(`/api/messages/${m.id}`, { visible_to_player: !m.visible_to_player });
+  const idx = chat.messages.findIndex((x) => x.id === m.id);
+  if (idx >= 0) chat.messages[idx] = res.message;
 }
 
 async function saveEdit(id: string) {

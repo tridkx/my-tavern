@@ -212,6 +212,10 @@ async function importFile(e: Event) {
 }
 
 function runAi(mode: 'generate' | 'polish' = 'generate') {
+  if (mode === 'polish' && !editing.value?.id) {
+    alert('请先保存角色，再使用 AI 润色');
+    return;
+  }
   aiMode.value = mode;
   aiPanel.value = true;
   aiPrompt.value = mode === 'polish' ? '请让文笔更生动，人设更鲜明。' : '';

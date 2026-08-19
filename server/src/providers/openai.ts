@@ -16,6 +16,33 @@ function withTimeout(signal?: AbortSignal): AbortSignal {
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
+/**
+ * 带 SSRF 防护的 fetch：
+ * - 每次请求（包括重定向后的地址）都校验目标 host 非私网/环回；
+ * - 手动处理重定向，避免“公网 302 到内网”绕过。
+ */
+async function safeFetch(url: string, init: RequestInit & { signal?: AbortSignal } = {}): Promise<Response> {
+  let currentUrl = url;
+  let redirects = 0;
+  for (;;) {
+    await assertBaseUrlAllowed(currentUrl);
+    const res = await fetch(currentUrl, {
+      ...init,
+      redirect: 'manual',
+      signal: withTimeout(init.signal),
+    });
+    if ([301, 302, 303, 307, 308].includes(res.status)) {
+      const location = res.headers.get('location');
+      if (!location) return res;
+      currentUrl = new URL(location, currentUrl).toString();
+      redirects += 1;
+      if (redirects > 5) throw new Error('模型请求重定向过多');
+      continue;
+    }
+    return res;
+  }
+}
+
 function endpoint(baseUrl: string, path: string): string {
   const base = (baseUrl || '').replace(/\/+$/, '');
   if (!base) throw new Error('未配置 API 地址 base_url');
@@ -59,15 +86,14 @@ export async function completeChat(
   opts: Partial<ChatCompletionRequest> = {},
   signal?: AbortSignal,
 ): Promise<string> {
-  const res = await fetch(endpoint(connection.base_url, '/chat/completions'), {
+  const res = await safeFetch(endpoint(connection.base_url, '/chat/completions'), {
     method: 'POST',
     headers: headers(connection),
     body: JSON.stringify(buildBody(connection, messages, { ...opts, stream: false })),
-    signal: withTimeout(signal),
+    signal,
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`模型请求失败 ${res.status}: ${text.slice(0, 500)}`);
+    throw new Error(`模型请求失败 ${res.status}`);
   }
   const data: any = await res.json();
   return data?.choices?.[0]?.message?.content ?? '';
@@ -82,15 +108,14 @@ export async function* streamChat(
   opts: Partial<ChatCompletionRequest> = {},
   signal?: AbortSignal,
 ): AsyncGenerator<string> {
-  const res = await fetch(endpoint(connection.base_url, '/chat/completions'), {
+  const res = await safeFetch(endpoint(connection.base_url, '/chat/completions'), {
     method: 'POST',
     headers: headers(connection),
     body: JSON.stringify(buildBody(connection, messages, { ...opts, stream: true })),
-    signal: withTimeout(signal),
+    signal,
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`模型请求失败 ${res.status}: ${text.slice(0, 500)}`);
+    throw new Error(`模型请求失败 ${res.status}`);
   }
   const reader = res.body?.getReader();
   if (!reader) throw new Error('模型响应没有可读流');
@@ -128,7 +153,6 @@ export async function generateImage(
   opts: { size?: string; n?: number; response_format?: 'url' | 'b64_json' } = {},
 ): Promise<{ url?: string; b64_json?: string; revised_prompt?: string }[]> {
   const apiKey = resolveApiKey(connection);
-  await assertBaseUrlAllowed(connection.base_url);
   const body: Record<string, unknown> = {
     model: connection.model,
     prompt,
@@ -136,7 +160,7 @@ export async function generateImage(
     size: opts.size || '1024x1024',
     response_format: opts.response_format || 'url',
   };
-  const res = await fetch(endpoint(connection.base_url, '/images/generations'), {
+  const res = await safeFetch(endpoint(connection.base_url, '/images/generations'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -144,11 +168,9 @@ export async function generateImage(
       ...(connection.extra_headers || {}),
     },
     body: JSON.stringify(body),
-    signal: withTimeout(),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`图片生成失败 ${res.status}: ${text.slice(0, 500)}`);
+    throw new Error(`图片生成失败 ${res.status}`);
   }
   const data: any = await res.json();
   return data?.data ?? [];
@@ -163,7 +185,6 @@ export async function generateSpeech(
   opts: { voice?: string; speed?: number; response_format?: string } = {},
 ): Promise<Buffer> {
   const apiKey = resolveApiKey(connection);
-  await assertBaseUrlAllowed(connection.base_url);
   const body: Record<string, unknown> = {
     model: connection.model,
     input: text,
@@ -171,7 +192,7 @@ export async function generateSpeech(
     speed: opts.speed ?? 1,
     response_format: opts.response_format || 'mp3',
   };
-  const res = await fetch(endpoint(connection.base_url, '/audio/speech'), {
+  const res = await safeFetch(endpoint(connection.base_url, '/audio/speech'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -179,11 +200,9 @@ export async function generateSpeech(
       ...(connection.extra_headers || {}),
     },
     body: JSON.stringify(body),
-    signal: withTimeout(),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`语音生成失败 ${res.status}: ${text.slice(0, 500)}`);
+    throw new Error(`语音生成失败 ${res.status}`);
   }
   return Buffer.from(await res.arrayBuffer());
 }

@@ -115,12 +115,13 @@ export function registerGroupRoutes(app: FastifyInstance) {
   app.patch('/api/groups/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     const body = groupSchema.parse(req.body || {});
+    const existing = getGroup(id);
+    if (!existing) return reply.code(404).send({ error: '群聊不存在' });
     const settings = body.settings
-      ? { enemyActionVisible: body.settings.enemyActionVisible ?? true, autoMode: body.settings.autoMode ?? 'round-robin' }
+      ? { ...(existing.settings || {}), ...body.settings }
       : undefined;
     const group = updateGroup(id, { ...body, settings });
-    if (!group) return reply.code(404).send({ error: '群聊不存在' });
-    return { group };
+    return { group: group! };
   });
 
   app.delete('/api/groups/:id', async (req, reply) => {
@@ -173,30 +174,56 @@ export function registerGroupRoutes(app: FastifyInstance) {
     const group = getGroup(chat.group_id);
     if (!group) return reply.code(404).send({ error: '群聊不存在' });
 
+    const members = listGroupMembers(group.id);
+    if (!members.some((m) => m.enabled && m.kind !== 'player')) {
+      return reply.code(400).send({ error: '群聊中没有可发言的 AI 角色' });
+    }
     const speakerId = body.speakerId || pickNextSpeaker(chat.id, group.id, group.settings.autoMode || 'round-robin', group.gm_character_id);
     if (group.settings.autoMode === 'manual' && !body.speakerId) {
       return reply.code(400).send({ error: '手动模式下请选择发言角色' });
     }
+    const member = members.find((m) => m.character_id === speakerId);
+    if (!member || !member.enabled || member.kind === 'player') {
+      return reply.code(400).send({ error: '发言人必须是群聊中已启用的 AI 角色' });
+    }
     const connection = resolveGroupConnection(group.id, speakerId, body.connectionId);
     if (!connection) return reply.code(400).send({ error: '没有可用的模型连接，请先在设置中添加连接' });
 
+    // 先构造上下文，再落库，避免把“即将创建的用户消息/空 assistant 占位”也写进 Prompt
+    const messages = buildGroupTurnMessages({
+      chatId: chat.id,
+      speakerId,
+      connection,
+      userText: body.userText,
+    });
+
+    let userMsg: { id: string } | undefined;
     if (body.userText) {
-      createMessage({ chat_id: chat.id, role: 'user', content: body.userText });
+      userMsg = createMessage({ chat_id: chat.id, role: 'user', content: body.userText });
     }
 
+    // 当“敌人行动对玩家隐藏”开启时，敌人发言自动标记为隐藏
+    const isHiddenEnemy = group.settings.enemyActionVisible === false && member.kind === 'enemy';
     const assistant = createMessage({
       chat_id: chat.id,
       role: 'assistant',
       character_id: speakerId,
       content: '',
       connection_id: connection.id,
+      visible_to_player: isHiddenEnemy ? 0 : 1,
     });
 
     const controller = new AbortController();
     if (!tryRegisterGeneration(assistant.id, controller)) {
       deleteMessage(assistant.id);
+      if (userMsg) deleteMessage(userMsg.id);
       return reply.code(429).send({ error: '生成任务过多，请稍后再试' });
     }
+
+    // 客户端断开连接时中止上游请求，避免生成继续空转
+    reply.raw.on('close', () => {
+      if (!reply.raw.writableEnded) controller.abort();
+    });
 
     reply.hijack();
     reply.raw.writeHead(200, {
@@ -204,18 +231,14 @@ export function registerGroupRoutes(app: FastifyInstance) {
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
     });
 
     const send = (obj: unknown) => reply.raw.write(`data: ${JSON.stringify(obj)}\n\n`);
 
     let content = '';
     try {
-      const messages = buildGroupTurnMessages({
-        chatId: chat.id,
-        speakerId,
-        connection,
-        userText: body.userText,
-      });
       for await (const delta of streamChat(connection, messages, {}, controller.signal)) {
         content += delta;
         send({ type: 'delta', messageId: assistant.id, delta });

@@ -219,13 +219,22 @@ export function registerChatRoutes(app: FastifyInstance) {
     const connection = resolveConnection(body.chatId, body.connectionId);
     if (!connection) return reply.code(400).send({ error: '没有可用的模型连接，请先在设置中添加连接' });
 
+    // 先构造上下文，再落库，避免把“即将创建的用户消息/空 assistant 占位”也写进 Prompt
+    const messages = buildSingleTurnMessages({
+      chatId: body.chatId,
+      userText: body.userText,
+      connection,
+      extraSystem: body.extraSystem,
+    });
+
+    let userMsg: { id: string } | undefined;
     if (body.userText) {
-      createMessage({ chat_id: body.chatId, role: 'user', content: body.userText });
+      userMsg = createMessage({ chat_id: body.chatId, role: 'user', content: body.userText });
     }
 
     const assistant = createMessage({
       chat_id: body.chatId,
-      role: chat.mode === 'group' ? 'assistant' : 'assistant',
+      role: 'assistant',
       content: '',
       connection_id: connection.id,
     });
@@ -233,8 +242,14 @@ export function registerChatRoutes(app: FastifyInstance) {
     const controller = new AbortController();
     if (!tryRegisterGeneration(assistant.id, controller)) {
       deleteMessage(assistant.id);
+      if (userMsg) deleteMessage(userMsg.id);
       return reply.code(429).send({ error: '生成任务过多，请稍后再试' });
     }
+
+    // 客户端断开连接时中止上游请求，避免生成继续空转
+    reply.raw.on('close', () => {
+      if (!reply.raw.writableEnded) controller.abort();
+    });
 
     reply.hijack();
     reply.raw.writeHead(200, {
@@ -242,6 +257,8 @@ export function registerChatRoutes(app: FastifyInstance) {
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
     });
 
     const send = (obj: unknown) => {
@@ -250,12 +267,6 @@ export function registerChatRoutes(app: FastifyInstance) {
 
     let content = '';
     try {
-      const messages = buildSingleTurnMessages({
-        chatId: body.chatId,
-        userText: body.userText,
-        connection,
-        extraSystem: body.extraSystem,
-      });
       for await (const delta of streamChat(connection, messages, {}, controller.signal)) {
         content += delta;
         send({ type: 'delta', messageId: assistant.id, delta });

@@ -16,6 +16,8 @@ export const IMAGE_DIR = path.join(UPLOAD_DIR, 'images');
 
 export const PORT = Number(process.env.PORT || 3000);
 export const HOST = process.env.HOST || '0.0.0.0';
+/** 部署在可信反向代理后时设为 1/true，使 req.ip 使用 X-Forwarded-For 等代理头。 */
+export const TRUST_PROXY = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
 export const ACCESS_TOKEN = process.env.ACCESS_TOKEN || '';
 export const PUBLIC_DIR = path.join(serverRoot, '..', 'web', 'dist');
 export const IS_PROD = process.env.NODE_ENV === 'production';

@@ -46,7 +46,7 @@ export async function assertPublicHost(host: string): Promise<void> {
 
 /** 仅允许 http/https 或同源相对路径（如 /media/...）。 */
 export function isSafeHttpUrl(url: string): boolean {
-  if (url.startsWith('/')) return true;
+  if (url.startsWith('/')) return !url.startsWith('//');
   try {
     const u = new URL(url);
     return u.protocol === 'http:' || u.protocol === 'https:';

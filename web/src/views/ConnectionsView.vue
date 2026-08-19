@@ -35,6 +35,17 @@
         <label style="flex: 1">Temperature<input v-model.number="form.temperature" type="number" step="0.1" min="0" max="2" /></label>
         <label style="flex: 1">Top P<input v-model.number="form.top_p" type="number" step="0.05" min="0" max="1" /></label>
       </div>
+      <div class="row">
+        <label style="flex: 1">Top K（可选）<input v-model.number="form.top_k" type="number" min="1" /></label>
+        <label style="flex: 1">Frequency Penalty<input v-model.number="form.frequency_penalty" type="number" step="0.1" min="-2" max="2" /></label>
+      </div>
+      <div class="row">
+        <label style="flex: 1">Presence Penalty<input v-model.number="form.presence_penalty" type="number" step="0.1" min="-2" max="2" /></label>
+      </div>
+      <label>停止序列（逗号分隔，可选）</label>
+      <input v-model="stopText" placeholder="END, STOP" />
+      <label>Extra Headers（JSON，可选）</label>
+      <textarea v-model="extraHeadersText" rows="3" placeholder='{"X-Tag":"value"}'></textarea>
       <label style="margin-top: 8px; display: flex; gap: 8px; align-items: center">
         <input v-model="form.is_default" type="checkbox" style="width: auto" /> 设为默认连接
       </label>
@@ -65,6 +76,8 @@ import { api } from '@/api/client';
 
 const app = useAppStore();
 const editing = ref<any>(null);
+const stopText = ref('');
+const extraHeadersText = ref('');
 const form = reactive<any>({
   name: '',
   provider: 'custom',
@@ -76,12 +89,17 @@ const form = reactive<any>({
   max_tokens: 2048,
   temperature: 0.8,
   top_p: 1,
+  top_k: null,
+  frequency_penalty: 0,
+  presence_penalty: 0,
+  stop_sequences: [],
+  extra_headers: {},
   is_default: false,
 });
 
 onMounted(() => app.loadAll());
 
-function openNew() {
+function resetForm() {
   Object.assign(form, {
     name: '',
     provider: 'custom',
@@ -93,12 +111,24 @@ function openNew() {
     max_tokens: 2048,
     temperature: 0.8,
     top_p: 1,
+    top_k: null,
+    frequency_penalty: 0,
+    presence_penalty: 0,
+    stop_sequences: [],
+    extra_headers: {},
     is_default: false,
   });
+  stopText.value = '';
+  extraHeadersText.value = '';
+}
+
+function openNew() {
+  resetForm();
   editing.value = { id: null };
 }
 
 function applyPreset(p: any) {
+  resetForm();
   Object.assign(form, {
     name: p.name,
     provider: p.id,
@@ -110,7 +140,6 @@ function applyPreset(p: any) {
     max_tokens: p.models?.[0]?.maxTokens || 2048,
     temperature: 0.8,
     top_p: 1,
-    is_default: false,
   });
   editing.value = { id: null };
 }
@@ -127,13 +156,42 @@ function edit(c: any) {
     max_tokens: c.max_tokens,
     temperature: c.temperature,
     top_p: c.top_p,
+    top_k: c.top_k ?? null,
+    frequency_penalty: c.frequency_penalty ?? 0,
+    presence_penalty: c.presence_penalty ?? 0,
+    stop_sequences: c.stop_sequences || [],
+    extra_headers: c.extra_headers || {},
     is_default: Boolean(c.is_default),
   });
+  stopText.value = (c.stop_sequences || []).join(', ');
+  extraHeadersText.value = JSON.stringify(c.extra_headers || {}, null, 2);
   editing.value = { id: c.id };
 }
 
 async function save() {
-  const payload: any = { ...form, is_default: Boolean(form.is_default) };
+  let extraHeaders: Record<string, string> = {};
+  if (extraHeadersText.value.trim()) {
+    try {
+      const parsed = JSON.parse(extraHeadersText.value);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error();
+      extraHeaders = parsed;
+      for (const key of Object.keys(extraHeaders)) {
+        if (typeof extraHeaders[key] !== 'string') extraHeaders[key] = String(extraHeaders[key]);
+      }
+    } catch {
+      alert('Extra Headers 必须是 JSON 对象');
+      return;
+    }
+  }
+  const payload: any = {
+    ...form,
+    stop_sequences: stopText.value.split(',').map((s) => s.trim()).filter(Boolean),
+    extra_headers: extraHeaders,
+    is_default: Boolean(form.is_default),
+  };
+  if (payload.top_k === '' || payload.top_k === null || payload.top_k === undefined) payload.top_k = null;
+  if (payload.frequency_penalty === '') payload.frequency_penalty = 0;
+  if (payload.presence_penalty === '') payload.presence_penalty = 0;
   if (!payload.api_key) delete payload.api_key;
   if (editing.value.id) {
     await api.put(`/api/connections/${editing.value.id}`, payload);

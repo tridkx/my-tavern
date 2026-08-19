@@ -4,7 +4,7 @@ import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import fs from 'node:fs';
 import path from 'node:path';
-import { CORS_ORIGIN, IS_PROD, PUBLIC_DIR, UPLOAD_DIR } from './config.js';
+import { CORS_ORIGIN, IS_PROD, PUBLIC_DIR, TRUST_PROXY, UPLOAD_DIR } from './config.js';
 import { isAuthenticated, isSecured, registerAuthRoutes } from './auth.js';
 import { registerConnectionRoutes } from './routes/connections.js';
 import { registerCharacterRoutes } from './routes/characters.js';
@@ -17,11 +17,11 @@ import { registerMediaRoutes } from './routes/media.js';
 import { seedConnections } from './seed.js';
 
 export async function buildApp() {
-  const app = Fastify({ logger: true, bodyLimit: 20 * 1024 * 1024 });
+  const app = Fastify({ logger: true, bodyLimit: 20 * 1024 * 1024, trustProxy: TRUST_PROXY });
 
-  // 生产/公网建议通过 CORS_ORIGIN 显式白名单；默认保持兼容（反射任意来源）
+  // 生产/公网建议通过 CORS_ORIGIN 显式白名单；默认关闭跨域，前端同源部署不受影响
   await app.register(cors, {
-    origin: CORS_ORIGIN.length > 0 ? CORS_ORIGIN : true,
+    origin: CORS_ORIGIN.length > 0 ? CORS_ORIGIN : false,
     credentials: true,
   });
   await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
@@ -38,10 +38,11 @@ export async function buildApp() {
 
   seedConnections();
 
-  // 全局安全响应头：禁止嗅探与 iframe 嵌入
-  app.addHook('onSend', async (_req, reply, payload) => {
+  // 全局安全响应头：禁止嗅探与 iframe 嵌入；API 响应不缓存
+  app.addHook('onSend', async (req, reply, payload) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('X-Frame-Options', 'DENY');
+    if (req.url.startsWith('/api')) reply.header('Cache-Control', 'no-store');
     return payload;
   });
 

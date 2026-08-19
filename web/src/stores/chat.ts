@@ -4,6 +4,7 @@ import { api, streamPost } from '@/api/client';
 export const useChatStore = defineStore('chat', {
   state: () => ({
     chatId: '' as string,
+    mode: '' as string,
     messages: [] as any[],
     generating: false,
     streamingMessageId: '' as string,
@@ -13,6 +14,7 @@ export const useChatStore = defineStore('chat', {
     async loadChat(chatId: string) {
       this.chatId = chatId;
       const res = await api.get(`/api/chats/${chatId}`);
+      this.mode = res.chat?.mode || '';
       this.messages = res.messages || [];
     },
     async sendSingle(text: string) {
@@ -47,9 +49,18 @@ export const useChatStore = defineStore('chat', {
           },
           this.abortController.signal,
         );
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') alert(e.message || '请求失败');
       } finally {
         this.generating = false;
+        this.streamingMessageId = '';
         this.abortController = null;
+        // 用服务端真实消息替换本地临时 user 消息，保证后续编辑/删除/重试可用
+        try {
+          await this.loadChat(this.chatId);
+        } catch {
+          // 忽略刷新失败，至少保留本地视图
+        }
       }
     },
     async sendGroup(speakerId: string, text?: string) {
@@ -85,9 +96,18 @@ export const useChatStore = defineStore('chat', {
           },
           this.abortController.signal,
         );
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') alert(e.message || '请求失败');
       } finally {
         this.generating = false;
+        this.streamingMessageId = '';
         this.abortController = null;
+        // 用服务端真实消息替换本地临时 user 消息，保证后续编辑/删除/重试可用
+        try {
+          await this.loadChat(this.chatId);
+        } catch {
+          // 忽略刷新失败，至少保留本地视图
+        }
       }
     },
     async stop() {
@@ -106,10 +126,15 @@ export const useChatStore = defineStore('chat', {
       this.messages = this.messages.filter((m) => m.id !== messageId);
     },
     async regenerate(messageId: string) {
+      const target = this.messages.find((m) => m.id === messageId);
       const res = await api.post(`/api/messages/${messageId}/regenerate`);
       this.messages = this.messages.filter((m) => m.id !== messageId);
       await this.loadChat(res.chatId);
-      await this.sendSingle('');
+      if (this.mode === 'group' && target?.character_id) {
+        await this.sendGroup(target.character_id, '');
+      } else {
+        await this.sendSingle('');
+      }
     },
   },
 });

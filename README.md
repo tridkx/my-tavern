@@ -52,7 +52,8 @@ npm start
 | `HOST` | 监听地址，默认 `0.0.0.0` |
 | `ACCESS_TOKEN` | 访问口令，留空表示不开启登录（公网部署务必设置） |
 | `MY_TAVERN_DATA` | 数据目录，默认项目下 `data/` |
-| `CORS_ORIGIN` | 允许跨域的来源（逗号分隔，如 `https://a.com,https://b.com`）。留空则允许任意来源；生产建议显式设置 |
+| `CORS_ORIGIN` | 允许跨域的来源（逗号分隔，如 `https://a.com,https://b.com`）。留空则关闭跨域；同源部署无需设置 |
+| `TRUST_PROXY` | 在可信反向代理（Nginx/Caddy）后设为 `1`，让登录限流使用真实客户端 IP |
 | `COOKIE_SECURE` | 设为 `1` 时登录 Cookie 增加 `Secure` 标志并使用 `__Host-` 前缀（仅在全 HTTPS 下启用） |
 | `LOGIN_MAX_ATTEMPTS` | 登录限流：单个 IP 在窗口内允许的失败次数，默认 `10`；`0` 关闭 |
 | `LOGIN_WINDOW_MS` | 登录限流窗口，默认 `900000`（15 分钟） |
@@ -66,8 +67,9 @@ npm start
 1. **必须设置 `ACCESS_TOKEN`**；服务启动时若检测到未设置口令且监听地址不是回环地址，会打印醒目警告。
 2. 全部流量走 HTTPS（Caddy/Nginx 反代），并设置 `COOKIE_SECURE=1`，让登录 Cookie 只通过加密连接传输。
 3. 设置 `CORS_ORIGIN=你的域名`，收紧跨域来源。
-4. 上传仅接受图片（png/jpg/gif/webp）与音频（mp3/ogg/wav/flac/m4a），服务端按魔数校验真实类型；上传内容一律 `nosniff`，杜绝 HTML/SVG 存储型 XSS。
-5. 如果不需要连接本地模型（Ollama/LM Studio），可设 `ALLOW_PRIVATE_BASE_URLS=false` 启用 SSRF 防护。
+4. 如果前面有 Nginx/Caddy 反向代理，设置 `TRUST_PROXY=1`，否则登录限流会按代理 IP 统计。
+5. 上传仅接受图片（png/jpg/gif/webp）与音频（mp3/ogg/wav/flac/m4a），服务端按魔数校验真实类型；上传内容一律 `nosniff`，杜绝 HTML/SVG 存储型 XSS。
+6. 如果不需要连接本地模型（Ollama/LM Studio），可设 `ALLOW_PRIVATE_BASE_URLS=false` 启用 SSRF 防护。
 
 ## Docker 部署
 

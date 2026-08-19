@@ -31,6 +31,9 @@ export function findWorldbookHits(worldbookId: string | null | undefined, text: 
     const lower = text.toLowerCase();
     const matched = keys.find((k) => k && lower.includes(k.toLowerCase()));
     if (matched) {
+      // 概率命中：probability < 100 时按概率决定是否注入
+      const probability = typeof entry.probability === 'number' ? entry.probability : 100;
+      if (probability < 100 && Math.random() * 100 >= probability) continue;
       hits.push({ entry, matchedKey: matched });
     }
   }

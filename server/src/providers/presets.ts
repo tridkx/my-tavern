@@ -183,8 +183,13 @@ export function getProviderPreset(id: string): ProviderPreset | undefined {
   return PROVIDER_PRESETS.find((p) => p.id === id);
 }
 
+/** 允许通过连接配置引用的环境变量白名单，防止任意读取服务器环境变量。 */
+export const ALLOWED_API_KEY_ENVS = new Set<string>(
+  PROVIDER_PRESETS.map((p) => p.apiKeyEnv).filter((v): v is string => Boolean(v)),
+);
+
 export function resolveApiKey(connection: Connection): string {
-  if (connection.api_key_env) {
+  if (connection.api_key_env && ALLOWED_API_KEY_ENVS.has(connection.api_key_env)) {
     const envValue = process.env[connection.api_key_env];
     if (envValue) return envValue;
   }

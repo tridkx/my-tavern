@@ -118,12 +118,13 @@ async function remove(id: string) {
 }
 
 async function copyUrl(m: any) {
-  const url = m.url || m.file_path || '';
+  const raw = m.url || m.file_path || '';
+  const url = /^https?:\/\//i.test(raw) ? raw : window.location.origin + raw;
   try {
-    await navigator.clipboard.writeText(window.location.origin + url);
+    await navigator.clipboard.writeText(url);
     alert('已复制');
   } catch {
-    prompt('复制链接', window.location.origin + url);
+    prompt('复制链接', url);
   }
 }
 </script>
