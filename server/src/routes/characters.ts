@@ -9,6 +9,7 @@ import {
 } from '../repo.js';
 import { fromTavernV2, toTavernV2 } from '../services/tavern.js';
 import { generateCharacterDraft, polishCharacter } from '../services/aiTools.js';
+import { extractCharacterCard, embedCharaPng } from '../services/imageCard.js';
 
 const characterSchema = z.object({
   name: z.string().optional(),
@@ -70,11 +71,43 @@ export function registerCharacterRoutes(app: FastifyInstance) {
     return reply.header('Content-Disposition', `attachment; filename="${encodeURIComponent(c.name)}.json"`).send(toTavernV2(c));
   });
 
+  app.get('/api/characters/:id/export-image', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const c = getCharacter(id);
+    if (!c) return reply.code(404).send({ error: '角色不存在' });
+    const png = embedCharaPng(toTavernV2(c));
+    return reply
+      .header('Content-Type', 'image/png')
+      .header('Content-Disposition', `attachment; filename="${encodeURIComponent(c.name)}.png"`)
+      .send(png);
+  });
+
   app.post('/api/characters/import', async (req, reply) => {
     const body = z.object({ json: z.unknown() }).parse(req.body || {});
     const data = fromTavernV2(body.json);
     const c = createCharacter(data);
     return reply.code(201).send({ character: c });
+  });
+
+  app.post('/api/characters/import-file', async (req, reply) => {
+    const parts = req.parts();
+    let buffer: Buffer | null = null;
+    let filename = '';
+    for await (const part of parts) {
+      if (part.type === 'file') {
+        buffer = await part.toBuffer();
+        filename = part.filename || '';
+      }
+    }
+    if (!buffer) return reply.code(400).send({ error: '没有收到文件' });
+    try {
+      const card = extractCharacterCard(buffer);
+      const data = fromTavernV2(card);
+      const c = createCharacter(data);
+      return reply.code(201).send({ character: c, filename });
+    } catch (err: any) {
+      return reply.code(400).send({ error: err.message || '导入失败' });
+    }
   });
 
   app.post('/api/characters/ai/generate', async (req, reply) => {

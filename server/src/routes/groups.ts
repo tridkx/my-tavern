@@ -65,11 +65,14 @@ function resolveGroupConnection(groupId: string, characterId?: string, connectio
   return getDefaultConnection();
 }
 
-function pickNextSpeaker(chatId: string, groupId: string): string {
+function pickNextSpeaker(chatId: string, groupId: string, autoMode: 'round-robin' | 'manual' | 'random' = 'round-robin'): string {
   const members = listGroupMembers(groupId)
     .filter((m) => m.enabled && m.kind !== 'player')
     .sort((a, b) => a.sort_order - b.sort_order);
   if (!members.length) throw new Error('群聊中没有可发言的 AI 角色');
+  if (autoMode === 'random') {
+    return members[Math.floor(Math.random() * members.length)].character_id;
+  }
   const messages = listMessages(chatId);
   const last = [...messages].reverse().find((m) => m.character_id);
   if (!last?.character_id) return members[0].character_id;
@@ -158,7 +161,10 @@ export function registerGroupRoutes(app: FastifyInstance) {
     const group = getGroup(chat.group_id);
     if (!group) return reply.code(404).send({ error: '群聊不存在' });
 
-    const speakerId = body.speakerId || pickNextSpeaker(chat.id, group.id);
+    const speakerId = body.speakerId || pickNextSpeaker(chat.id, group.id, group.settings.autoMode || 'round-robin');
+    if (group.settings.autoMode === 'manual' && !body.speakerId) {
+      return reply.code(400).send({ error: '手动模式下请选择发言角色' });
+    }
     const connection = resolveGroupConnection(group.id, speakerId, body.connectionId);
     if (!connection) return reply.code(400).send({ error: '没有可用的模型连接，请先在设置中添加连接' });
 

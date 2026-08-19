@@ -59,8 +59,21 @@
         </label>
       </div>
       <div class="row" style="margin-top: 8px">
+        <label style="display: flex; align-items: center; gap: 6px">模式
+          <select v-model="autoMode" @change="setAutoMode" style="width: auto">
+            <option value="round-robin">轮询</option>
+            <option value="random">随机</option>
+            <option value="manual">手动</option>
+          </select>
+        </label>
+        <span class="spacer" />
+        <label style="display: flex; align-items: center; gap: 6px">
+          <input type="checkbox" :checked="group?.settings?.enemyActionVisible !== false" @change="toggleEnemyVisible" /> 敌人行动对玩家可见
+        </label>
+      </div>
+      <div class="row" style="margin-top: 8px">
         <select v-model="manualSpeaker" style="flex: 1">
-          <option value="">自动/轮询</option>
+          <option value="">{{ autoMode === 'manual' ? '请选择发言人' : '自动选择发言人' }}</option>
           <option v-for="m in groupMembers" :key="m.id" :value="m.character_id">{{ memberName(m.character_id) }} ({{ memberKind(m.kind) }})</option>
         </select>
         <button class="primary" :disabled="chat.generating" @click="sendGroupNow">{{ chat.generating ? '生成中…' : '生成回复' }}</button>
@@ -169,6 +182,7 @@ const addCharId = ref('');
 const addCharKind = ref('companion');
 const group = ref<any>(null);
 const selectedBackground = ref('');
+const autoMode = ref('round-robin');
 
 const backgrounds = computed(() => app.media.filter((m) => m.kind === 'background'));
 const backgroundUrl = computed(() => {
@@ -200,9 +214,11 @@ async function loadChat() {
     const res = await api.get(`/api/groups/${ch.group_id}`);
     group.value = res.group;
     groupMembers.value = res.members || [];
+    autoMode.value = res.group.settings?.autoMode || 'round-robin';
   } else {
     group.value = null;
     groupMembers.value = [];
+    autoMode.value = 'round-robin';
   }
 }
 
@@ -278,6 +294,14 @@ async function removeMember(id: string) {
   await api.del(`/api/group-members/${id}`);
   const res = await api.get(`/api/groups/${newGroupId.value || currentChat.value?.group_id}`);
   groupMembers.value = res.members || [];
+}
+
+async function setAutoMode() {
+  if (!group.value) return;
+  const res = await api.patch(`/api/groups/${group.value.id}`, {
+    settings: { ...(group.value.settings || {}), autoMode: autoMode.value },
+  });
+  group.value = res.group;
 }
 
 async function toggleEnemyVisible() {

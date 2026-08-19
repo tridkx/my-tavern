@@ -5,7 +5,7 @@
       <span class="spacer" />
       <button @click="openNew">新建</button>
       <button @click="fileInput?.click()">导入</button>
-      <input ref="fileInput" type="file" accept=".json" style="display: none" @change="importFile" />
+      <input ref="fileInput" type="file" accept=".json,.png,.webp" style="display: none" @change="importFile" />
     </div>
 
     <div v-if="aiPanel" class="card" style="margin: 12px 0">
@@ -77,7 +77,8 @@
           <strong>{{ c.name }}</strong>
           <div class="muted">{{ c.kind === 'special' ? '专用' : '通用' }} · {{ c.tags?.join(', ') || '无标签' }}</div>
         </div>
-        <a :href="`/api/characters/${c.id}/export`" download>导出</a>
+        <a :href="`/api/characters/${c.id}/export`" download>JSON</a>
+        <a :href="`/api/characters/${c.id}/export-image`" download>PNG卡</a>
         <button @click="edit(c)">编辑</button>
         <button @click="remove(c.id)">删除</button>
       </div>
@@ -187,9 +188,20 @@ async function importFile(e: Event) {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
-  const text = await file.text();
   try {
-    await api.post('/api/characters/import', { json: JSON.parse(text) });
+    const lower = file.name.toLowerCase();
+    if (lower.endsWith('.json')) {
+      const text = await file.text();
+      await api.post('/api/characters/import', { json: JSON.parse(text) });
+    } else {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/characters/import-file', { method: 'POST', credentials: 'include', body: fd });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '导入失败');
+      }
+    }
     await app.refreshCharacters();
     alert('导入成功');
   } catch (err: any) {
