@@ -65,16 +65,28 @@ function resolveGroupConnection(groupId: string, characterId?: string, connectio
   return getDefaultConnection();
 }
 
-function pickNextSpeaker(chatId: string, groupId: string, autoMode: 'round-robin' | 'manual' | 'random' = 'round-robin'): string {
+function pickNextSpeaker(
+  chatId: string,
+  groupId: string,
+  autoMode: 'round-robin' | 'manual' | 'random' = 'round-robin',
+  gmCharacterId?: string | null,
+): string {
   const members = listGroupMembers(groupId)
     .filter((m) => m.enabled && m.kind !== 'player')
     .sort((a, b) => a.sort_order - b.sort_order);
   if (!members.length) throw new Error('群聊中没有可发言的 AI 角色');
+
+  const messages = listMessages(chatId);
+  const last = [...messages].reverse().find((m) => m.character_id);
+
+  // 隐藏的敌人行动之后优先让 GM 发言，避免非 GM 角色泄露隐藏信息
+  if (gmCharacterId && last && !last.visible_to_player && members.some((m) => m.character_id === gmCharacterId)) {
+    return gmCharacterId;
+  }
+
   if (autoMode === 'random') {
     return members[Math.floor(Math.random() * members.length)].character_id;
   }
-  const messages = listMessages(chatId);
-  const last = [...messages].reverse().find((m) => m.character_id);
   if (!last?.character_id) return members[0].character_id;
   const idx = members.findIndex((m) => m.character_id === last.character_id);
   if (idx === -1) return members[0].character_id;
@@ -161,7 +173,7 @@ export function registerGroupRoutes(app: FastifyInstance) {
     const group = getGroup(chat.group_id);
     if (!group) return reply.code(404).send({ error: '群聊不存在' });
 
-    const speakerId = body.speakerId || pickNextSpeaker(chat.id, group.id, group.settings.autoMode || 'round-robin');
+    const speakerId = body.speakerId || pickNextSpeaker(chat.id, group.id, group.settings.autoMode || 'round-robin', group.gm_character_id);
     if (group.settings.autoMode === 'manual' && !body.speakerId) {
       return reply.code(400).send({ error: '手动模式下请选择发言角色' });
     }

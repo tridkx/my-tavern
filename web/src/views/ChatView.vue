@@ -5,7 +5,20 @@
         <option value="">选择会话…</option>
         <option v-for="ch in app.chats" :key="ch.id" :value="ch.id">{{ ch.title || '未命名会话' }}</option>
       </select>
+      <button @click="showContext = !showContext">上下文</button>
       <button @click="showNew = !showNew">新建</button>
+    </div>
+
+    <div v-if="showContext && contextPreview" class="card context-panel">
+      <div class="row">
+        <strong>上下文预览</strong>
+        <span class="spacer" />
+        <button @click="showContext = false">关闭</button>
+      </div>
+      <div class="muted">
+        估算 {{ contextPreview.totalTokens }} / {{ contextPreview.maxTokens }} tokens（{{ contextPreview.usagePercent }}%）
+      </div>
+      <pre>{{ JSON.stringify(contextPreview.messages, null, 2) }}</pre>
     </div>
 
     <div v-if="currentChat" class="row" style="margin-bottom: 6px">
@@ -131,6 +144,8 @@
           </div>
           <div class="row msg-actions" style="margin-top: 4px">
             <button v-if="!editId || editId !== m.id" @click="startEdit(m)">编辑</button>
+            <button @click="forkMessage(m)">分支</button>
+            <button @click="deleteAfter(m)">删除之后</button>
             <button @click="chat.regenerate(m.id)">重试</button>
             <button @click="chat.deleteMessage(m.id)">删除</button>
           </div>
@@ -183,6 +198,8 @@ const addCharKind = ref('companion');
 const group = ref<any>(null);
 const selectedBackground = ref('');
 const autoMode = ref('round-robin');
+const showContext = ref(false);
+const contextPreview = ref<any>(null);
 
 const backgrounds = computed(() => app.media.filter((m) => m.kind === 'background'));
 const backgroundUrl = computed(() => {
@@ -208,6 +225,8 @@ watch(selectedChatId, async (id) => {
 async function loadChat() {
   if (!selectedChatId.value) return;
   await chat.loadChat(selectedChatId.value);
+  showContext.value = false;
+  contextPreview.value = null;
   const ch = app.chats.find((c) => c.id === selectedChatId.value);
   selectedBackground.value = ch?.background_id || '';
   if (ch?.mode === 'group') {
@@ -332,6 +351,38 @@ function characterAvatar(id?: string) {
   return c?.avatar_url || '';
 }
 
+async function loadContext() {
+  if (!selectedChatId.value) return;
+  try {
+    const res = await api.post(`/api/chats/${selectedChatId.value}/context-preview`, {
+      speakerId: currentChat.value?.mode === 'group' ? manualSpeaker.value || undefined : undefined,
+    });
+    contextPreview.value = res;
+  } catch (e: any) {
+    alert(e.message);
+  }
+}
+
+async function toggleContext() {
+  showContext.value = !showContext.value;
+  if (showContext.value) await loadContext();
+}
+
+async function forkMessage(m: any) {
+  const title = prompt('分支会话标题', (currentChat.value?.title || '会话') + ' (分支)');
+  if (title === null) return;
+  const res = await api.post(`/api/chats/${selectedChatId.value}/fork`, { fromMessageId: m.id, title });
+  await app.refreshChats();
+  selectedChatId.value = res.chat.id;
+  await loadChat();
+}
+
+async function deleteAfter(m: any) {
+  if (!confirm('确定删除该消息之后的所有消息？')) return;
+  await api.post(`/api/messages/${m.id}/delete-after`);
+  await chat.loadChat(selectedChatId.value);
+}
+
 function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -420,6 +471,19 @@ async function saveEdit(id: string) {
 }
 .composer textarea {
   flex: 1;
+}
+.context-panel {
+  margin: 8px 0;
+  max-height: 260px;
+  overflow: auto;
+  font-size: 0.75rem;
+}
+.context-panel pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #12172a;
+  padding: 8px;
+  border-radius: 8px;
 }
 .member-row {
   display: flex;

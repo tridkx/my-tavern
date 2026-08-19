@@ -6,17 +6,20 @@ import {
   deleteChat,
   deleteMessage,
   deleteMessagesAfter,
+  deleteMessagesAfterExclusive,
   getChat,
   getCharacter,
   getConnection,
   getDefaultConnection,
+  getGroup,
   getMessage,
   listChats,
+  listGroupMembers,
   listMessages,
   updateChat,
   updateMessage,
 } from '../repo.js';
-import { buildSingleTurnMessages } from '../services/context.js';
+import { buildSingleTurnMessages, buildGroupTurnMessages, estimateTokens } from '../services/context.js';
 import { streamChat } from '../providers/openai.js';
 import { activeGenerations, abortGeneration } from '../active.js';
 import type { Connection } from '../types.js';
@@ -130,6 +133,73 @@ export function registerChatRoutes(app: FastifyInstance) {
     const content = msg.content;
     deleteMessage(id);
     return { chatId: chat.id, regenerateContent: content };
+  });
+
+  app.post('/api/messages/:id/delete-after', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const msg = getMessage(id);
+    if (!msg) return reply.code(404).send({ error: '消息不存在' });
+    deleteMessagesAfterExclusive(msg.chat_id, id);
+    return { ok: true };
+  });
+
+  app.post('/api/chats/:id/fork', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = z.object({ fromMessageId: z.string(), title: z.string().optional() }).parse(req.body || {});
+    const chat = getChat(id);
+    if (!chat) return reply.code(404).send({ error: '会话不存在' });
+    const from = getMessage(body.fromMessageId);
+    if (!from || from.chat_id !== id) return reply.code(400).send({ error: '消息不存在于该会话' });
+
+    const newChat = createChat({
+      title: body.title || (chat.title ? `${chat.title} (分支)` : '分支会话'),
+      mode: chat.mode,
+      character_id: chat.character_id,
+      group_id: chat.group_id,
+      background_id: chat.background_id,
+    });
+
+    for (const m of listMessages(id)) {
+      createMessage({
+        chat_id: newChat.id,
+        role: m.role,
+        character_id: m.character_id,
+        content: m.content,
+        visible_to_player: m.visible_to_player,
+        connection_id: m.connection_id,
+      });
+      if (m.id === body.fromMessageId) break;
+    }
+    return reply.code(201).send({ chat: newChat, messages: listMessages(newChat.id) });
+  });
+
+  // ---------- context preview ----------
+  app.post('/api/chats/:id/context-preview', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const chat = getChat(id);
+    if (!chat) return reply.code(404).send({ error: '会话不存在' });
+    const body = z
+      .object({
+        userText: z.string().optional(),
+        connectionId: z.string().optional(),
+        speakerId: z.string().optional(),
+      })
+      .parse(req.body || {});
+
+    const connection = resolveConnection(id, body.connectionId);
+    if (!connection) return reply.code(400).send({ error: '没有可用的模型连接，请先在设置中添加连接' });
+
+    let messages;
+    if (chat.mode === 'group') {
+      const speakerId = body.speakerId || listGroupMembers(chat.group_id || '').find((m) => m.kind !== 'player')?.character_id;
+      if (!speakerId) return reply.code(400).send({ error: '群聊中没有可发言的 AI 角色' });
+      messages = buildGroupTurnMessages({ chatId: id, speakerId, connection, userText: body.userText });
+    } else {
+      messages = buildSingleTurnMessages({ chatId: id, userText: body.userText, connection });
+    }
+    const totalTokens = estimateTokens(JSON.stringify(messages));
+    const maxTokens = connection.context_window || 8192;
+    return { messages, totalTokens, maxTokens, usagePercent: Math.min(100, Math.round((totalTokens / maxTokens) * 100)) };
   });
 
   // ---------- streaming generation ----------

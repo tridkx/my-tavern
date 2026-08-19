@@ -3,13 +3,12 @@ export interface ApiError extends Error {
 }
 
 async function request<T = any>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = { ...(options.headers as Record<string, string> | undefined) };
+  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   const res = await fetch(path, {
     credentials: 'include',
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
+    headers,
   });
   if (res.status === 401) {
     if (!window.location.pathname.startsWith('/login')) window.location.href = '/login';

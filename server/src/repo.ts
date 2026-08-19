@@ -384,6 +384,15 @@ export function deleteMessagesAfter(chatId: string, messageId: string) {
   run("DELETE FROM messages WHERE chat_id = ? AND created_at >= ?", chatId, msg.created_at);
 }
 
+export function deleteMessagesAfterExclusive(chatId: string, messageId: string) {
+  const messages = listMessages(chatId);
+  const idx = messages.findIndex((m) => m.id === messageId);
+  if (idx === -1) return;
+  for (const m of messages.slice(idx + 1)) {
+    deleteMessage(m.id);
+  }
+}
+
 // ---------- groups ----------
 export function listGroups(): Group[] {
   return all<any>('SELECT * FROM groups ORDER BY updated_at DESC').map((r) => ({

@@ -7,7 +7,7 @@
 - **多后端模型连接**：每个连接可独立配置 API 地址、Key、模型名、上下文长度、采样参数；内置 DeepSeek、OpenCode Go、OpenAI、Kimi、GLM、Qwen、OpenRouter、Groq、Mistral、Together、SiliconFlow、Ollama、LM Studio、vLLM 等预设。
 - **角色卡**：通用/专用角色卡，专用角色绑定世界书；支持创建、编辑、导入导出（Tavern V2 JSON / PNG 图片卡）、AI 生成/润色。
 - **世界书**：关键词触发、常驻、概率、顺序等条目；支持创建、导入导出、AI 生成。
-- **聊天**：流式输出、停止、重新生成、手动编辑/删除消息；会话可绑定背景图。
+- **聊天**：流式输出、停止、重新生成、手动编辑/删除消息、从任意消息分支新会话、上下文预览（Token 估算）；会话可绑定背景图。
 - **群聊**：AI 同伴、GM、AI 敌人，每个角色可指定不同模型连接；支持轮询/随机/手动发言模式；敌人行动可对玩家隐藏，GM Prompt 会显式约束不得透露隐藏行动。
 - **语音输出**：OpenAI 兼容 `/audio/speech` TTS，可独立使用。
 - **图片生成**：OpenAI 兼容 `/images/generations`，可独立使用并保存到资源库。
@@ -60,7 +60,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-公网访问时建议在前面再加一层 HTTPS 反向代理（Caddy/Nginx）。
+公网访问时建议在前面再加一层 HTTPS 反向代理（Caddy/Nginx），参考 `deploy/nginx.conf` 和 `deploy/Caddyfile`。注意代理需要关闭缓冲以支持 SSE 流式输出。
 
 ## 目录结构
 
@@ -83,5 +83,7 @@ data/            SQLite 与上传资源（不入库）
 - [x] PNG 图片角色卡导入导出（WebP 导入为尽力支持）
 - [x] 群聊隐藏行动约束、轮询/随机/手动发言模式
 - [x] 移动端基础 UI、PWA 离线缓存
-- [ ] 分支时间线、消息摘要
+- [x] 分支会话、删除后续消息、上下文预览/Token 估算
+- [x] HTTPS 反代示例（Nginx/Caddy）
+- [ ] 消息自动摘要
 - [ ] 更多 TTS/图片提供商

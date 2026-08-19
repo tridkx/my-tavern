@@ -1,0 +1,10 @@
+# MyTavern Caddy 反代示例（自动 HTTPS）
+# 使用前把 your.domain.com 换成你的域名，并把 127.0.0.1:3000 换成实际后端地址
+
+your.domain.com {
+    reverse_proxy 127.0.0.1:3000 {
+        # SSE 流式输出需要关闭缓冲
+        flush_interval -1
+    }
+    encode zstd gzip
+}
