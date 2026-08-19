@@ -157,6 +157,7 @@ export function buildGroupTurnMessages(params: {
   const members = listGroupMembers(group.id).filter((m) => m.enabled);
   const speaker = getCharacter(params.speakerId);
   if (!speaker) throw new Error('发言角色不存在');
+  const messages = listMessages(params.chatId);
 
   const memberLines = members.map((m) => {
     const c = getCharacter(m.character_id);
@@ -185,9 +186,22 @@ export function buildGroupTurnMessages(params: {
     );
   }
 
+  // 与单聊一致：常驻世界书放稳定 system 前缀，动态关键词世界书放历史之后
+  let dynamicWorldbook = '';
+  if (speaker.worldbook_id) {
+    const historyText = messages.map((m) => m.content).join('\n');
+    const searchText = `${historyText}\n${params.userText || ''}`;
+    const hits = findWorldbookHits(speaker.worldbook_id, searchText);
+    const constantHits = hits.filter((h) => h.entry.constant);
+    const dynamicHits = hits.filter((h) => !h.entry.constant);
+    const constantWb = formatWorldbook(constantHits);
+    if (constantWb) systemParts.push(constantWb);
+    dynamicWorldbook = formatWorldbook(dynamicHits);
+  }
+
   const result: ChatCompletionMessage[] = [{ role: 'system', content: systemParts.filter(Boolean).join('\n\n') }];
 
-  for (const m of listMessages(params.chatId)) {
+  for (const m of messages) {
     const c = m.character_id ? getCharacter(m.character_id) : undefined;
     const displayContent = !m.visible_to_player ? `【隐藏信息，禁止向玩家公开提及】${m.content}` : m.content;
     if (m.role === 'user') {
@@ -201,6 +215,11 @@ export function buildGroupTurnMessages(params: {
         ...(c ? { name: c.name } : {}),
       });
     }
+  }
+
+  // 动态世界书作为后缀追加，保持前面的 system + 历史消息前缀稳定
+  if (dynamicWorldbook) {
+    result.push({ role: 'system', content: dynamicWorldbook });
   }
 
   if (params.userText) {
