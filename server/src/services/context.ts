@@ -91,12 +91,19 @@ export function buildSingleTurnMessages(params: {
 
   const systemParts: string[] = [];
   systemParts.push(character ? characterSystemPrompt(character) : defaultSystemPrompt());
+
+  // 常驻世界书内容固定不变，放入稳定 system 前缀，利于前缀缓存；
+  // 关键词触发的动态世界书放到历史消息之后，避免污染稳定前缀。
+  let dynamicWorldbook = '';
   if (character?.worldbook_id) {
     const historyText = messages.map((m) => m.content).join('\n');
     const searchText = `${historyText}\n${params.userText || ''}`;
     const hits = findWorldbookHits(character.worldbook_id, searchText);
-    const wb = formatWorldbook(hits);
-    if (wb) systemParts.push(wb);
+    const constantHits = hits.filter((h) => h.entry.constant);
+    const dynamicHits = hits.filter((h) => !h.entry.constant);
+    const constantWb = formatWorldbook(constantHits);
+    if (constantWb) systemParts.push(constantWb);
+    dynamicWorldbook = formatWorldbook(dynamicHits);
   }
   if (params.extraSystem) systemParts.push(params.extraSystem);
   const systemContent = systemParts.join('\n\n');
@@ -116,6 +123,11 @@ export function buildSingleTurnMessages(params: {
     } else if (m.role === 'system') {
       result.push({ role: 'system', content: m.content });
     }
+  }
+
+  // 动态世界书作为后缀追加，保持前面的 system + 历史消息前缀稳定
+  if (dynamicWorldbook) {
+    result.push({ role: 'system', content: dynamicWorldbook });
   }
 
   if (params.userText) {
