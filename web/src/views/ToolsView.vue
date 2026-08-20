@@ -12,8 +12,10 @@
       </select>
       <label>文本</label>
       <textarea v-model="ttsText" placeholder="要朗读的内容"></textarea>
-      <label>音色</label>
-      <input v-model="ttsVoice" placeholder="alloy / echo / fable / onyx / nova / shimmer" />
+      <label>音色（{{ ttsConnInfo?.name || '当前连接' }}）</label>
+      <select v-model="ttsVoice">
+        <option v-for="v in voiceOptions" :key="v.id" :value="v.id">{{ v.label }}</option>
+      </select>
       <div class="row" style="margin-top: 10px">
         <button class="primary" :disabled="ttsBusy" @click="doTts">生成语音</button>
         <audio v-if="ttsUrl" :src="ttsUrl" controls style="flex: 1; min-width: 200px" />
@@ -52,9 +54,38 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useAppStore } from '@/stores/app';
 import { api } from '@/api/client';
+
+/** 阿里云百炼 Qwen-Audio-TTS 系统音色（qwen-audio-3.0-tts-flash） */
+const DASHSCOPE_FLASH_VOICES = [
+  { id: 'longanhuan_v3.6', label: '龙安欢 · 女 25 · 默认' },
+  { id: 'longanfengyue', label: '龙安风悦 · 女 30 · 自然亲切' },
+  { id: 'longanyuanfei', label: '龙安元妃 · 女 30 · 高傲妃子' },
+  { id: 'longanlingxi', label: '龙安灵希 · 女 25 · 可爱甜美' },
+  { id: 'longanxiaoxin', label: '龙安小昕 · 女 22 · 亲切活泼' },
+  { id: 'longjielidou_v3.6', label: '龙杰力豆 · 男 5 · 天真男童' },
+  { id: 'longpaopao_v3.6', label: '龙泡泡 · 女 5 · 软糯可爱' },
+  { id: 'longhuohuo_v3.6', label: '龙火火 · 男 8 · 顽皮少年' },
+  { id: 'longchuanshu_v3.6', label: '龙川叔 · 男 40 · 川普大叔' },
+  { id: 'loongmary', label: 'loongmary · 女 20 · 温暖英音' },
+  { id: 'loongeva_v3.6', label: 'loongeva · 女 28 · 高智美音' },
+  { id: 'loongjohn', label: 'loongJohn · 男 28 · 沉稳美音' },
+];
+
+/** qwen-audio-3.0-tts-plus 额外系统音色 */
+const DASHSCOPE_PLUS_VOICES = [
+  ...DASHSCOPE_FLASH_VOICES,
+  { id: 'longanlingxin', label: '龙安灵心 · 女 25 · 知心温暖' },
+  { id: 'longanlufeng', label: '龙安鲁风 · 男 25 · 明亮开朗' },
+];
+
+/** OpenAI 兼容 TTS 标准音色 */
+const OPENAI_VOICES = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'].map((id) => ({
+  id,
+  label: id,
+}));
 
 const app = useAppStore();
 const ttsConn = ref('');
@@ -72,10 +103,27 @@ const imgBusy = ref(false);
 
 const ttsConns = computed(() => app.connections.filter((c: any) => c.type === 'tts'));
 const imgConns = computed(() => app.connections.filter((c: any) => c.type === 'image'));
+const ttsConnInfo = computed(() => app.connections.find((c: any) => c.id === ttsConn.value) || null);
+
+const voiceOptions = computed(() => {
+  const conn = ttsConnInfo.value;
+  if (conn?.provider === 'dashscope-tts') {
+    return String(conn.model || '').includes('plus') ? DASHSCOPE_PLUS_VOICES : DASHSCOPE_FLASH_VOICES;
+  }
+  return OPENAI_VOICES;
+});
+
+// 切换连接时自动重置音色为该连接支持的默认音色
+watch(ttsConn, () => {
+  if (voiceOptions.value.length) ttsVoice.value = voiceOptions.value[0].id;
+});
 
 onMounted(async () => {
   await app.loadAll();
-  if (ttsConns.value.length) ttsConn.value = ttsConns.value[0].id;
+  if (ttsConns.value.length) {
+    ttsConn.value = ttsConns.value[0].id;
+    if (voiceOptions.value.length) ttsVoice.value = voiceOptions.value[0].id;
+  }
   if (imgConns.value.length) imgConn.value = imgConns.value[0].id;
 });
 

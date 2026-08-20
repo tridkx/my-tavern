@@ -475,9 +475,11 @@ async function saveEdit(id: string) {
 .chat-header {
   position: sticky;
   top: 0;
-  background: var(--bg);
+  background: rgba(16, 17, 34, 0.75);
+  backdrop-filter: blur(10px);
   z-index: 10;
   padding: 8px 0;
+  border-bottom: 1px solid var(--border);
 }
 .group-panel {
   margin: 8px 0;
@@ -498,16 +500,18 @@ async function saveEdit(id: string) {
 }
 .composer {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 56px;
-  max-width: var(--max-width);
-  margin: 0 auto;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 74px;
+  width: min(calc(100% - 24px), var(--max-width));
   display: flex;
   gap: 8px;
   padding: 10px;
-  background: #10152a;
-  border-top: 1px solid var(--border);
+  background: rgba(16, 17, 34, 0.88);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
   z-index: 20;
 }
 .composer textarea {
