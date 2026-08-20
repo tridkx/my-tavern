@@ -9,6 +9,16 @@ db.exec('PRAGMA journal_mode = WAL;');
 db.exec('PRAGMA foreign_keys = ON;');
 db.exec(SCHEMA_SQL);
 
+// ---- 迁移：为旧库补充新增列 ----
+function ensureColumn(table: string, column: string, ddl: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  }
+}
+
+ensureColumn('connections', 'type', "type TEXT NOT NULL DEFAULT 'llm'");
+
 export type Row = Record<string, unknown>;
 
 export function all<T = Row>(sql: string, ...params: any[]): T[] {

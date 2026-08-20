@@ -30,6 +30,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: 'OpenAI',
     baseUrl: 'https://api.openai.com/v1',
     apiKeyEnv: 'OPENAI_API_KEY',
+    types: ['llm', 'tts', 'image'],
     models: [
       { id: 'gpt-4o', name: 'GPT-4o', contextWindow: 128000, maxTokens: 16384 },
       { id: 'gpt-4o-mini', name: 'GPT-4o mini', contextWindow: 128000, maxTokens: 16384 },
@@ -66,6 +67,49 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
       { id: 'qwen-max', name: 'Qwen Max', contextWindow: 32768, maxTokens: 8192 },
       { id: 'qwen-plus', name: 'Qwen Plus', contextWindow: 131072, maxTokens: 8192 },
       { id: 'qwen-turbo', name: 'Qwen Turbo', contextWindow: 131072, maxTokens: 8192 },
+    ],
+  },
+  {
+    id: 'dashscope-tts',
+    name: '阿里云 CosyVoice（语音）',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    apiKeyEnv: 'DASHSCOPE_API_KEY',
+    types: ['tts'],
+    models: [
+      { id: 'cosyvoice-v2', name: 'CosyVoice V2', contextWindow: 8192, maxTokens: 4096 },
+      { id: 'cosyvoice-v1', name: 'CosyVoice V1', contextWindow: 8192, maxTokens: 4096 },
+    ],
+  },
+  {
+    id: 'dashscope-image',
+    name: '阿里云通义万相（图片）',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    apiKeyEnv: 'DASHSCOPE_API_KEY',
+    types: ['image'],
+    models: [
+      { id: 'wanx2.1-t2i-turbo', name: '万相 2.1 Turbo', contextWindow: 8192, maxTokens: 4096 },
+      { id: 'wanx2.1-t2i-plus', name: '万相 2.1 Plus', contextWindow: 8192, maxTokens: 4096 },
+    ],
+  },
+  {
+    id: 'volcengine-tts',
+    name: '火山引擎豆包语音（TTS）',
+    baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+    apiKeyEnv: 'VOLCENGINE_API_KEY',
+    types: ['tts'],
+    models: [
+      { id: 'doubao-tts', name: '豆包语音合成', contextWindow: 8192, maxTokens: 4096 },
+    ],
+  },
+  {
+    id: 'volcengine-image',
+    name: '火山引擎豆包 Seedream（图片）',
+    baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+    apiKeyEnv: 'VOLCENGINE_API_KEY',
+    types: ['image'],
+    models: [
+      { id: 'doubao-seedream-4-0', name: 'Seedream 4.0', contextWindow: 8192, maxTokens: 4096 },
+      { id: 'doubao-seedream-3-0-t2i', name: 'Seedream 3.0 T2I', contextWindow: 8192, maxTokens: 4096 },
     ],
   },
   {
@@ -114,6 +158,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     name: '硅基流动 SiliconFlow',
     baseUrl: 'https://api.siliconflow.cn/v1',
     apiKeyEnv: 'SILICONFLOW_API_KEY',
+    types: ['llm', 'tts', 'image'],
     models: [
       { id: 'deepseek-ai/DeepSeek-V3', name: 'DeepSeek V3', contextWindow: 65536, maxTokens: 8192 },
       { id: 'Qwen/Qwen2.5-72B-Instruct', name: 'Qwen2.5 72B', contextWindow: 131072, maxTokens: 8192 },

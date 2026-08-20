@@ -1,6 +1,10 @@
+/** 连接用途：llm = 对话模型，tts = 语音合成，image = 图片生成 */
+export type ConnectionType = 'llm' | 'tts' | 'image';
+
 export interface Connection {
   id: string;
   name: string;
+  type: ConnectionType;
   provider: string;
   base_url: string;
   api_key: string;
@@ -130,6 +134,8 @@ export interface ProviderPreset {
   name: string;
   baseUrl: string;
   apiKeyEnv?: string;
+  /** 该提供商支持的连接用途；缺省视为仅 ['llm'] */
+  types?: ConnectionType[];
   models: { id: string; name: string; contextWindow: number; maxTokens: number }[];
 }
 

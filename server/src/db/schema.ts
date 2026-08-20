@@ -2,6 +2,7 @@ export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS connections (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'llm',
   provider TEXT NOT NULL DEFAULT 'custom',
   base_url TEXT NOT NULL,
   api_key TEXT NOT NULL DEFAULT '',

@@ -6,6 +6,7 @@ import type { Connection } from '../types.js';
 
 const connectionSchema = z.object({
   name: z.string().optional(),
+  type: z.enum(['llm', 'tts', 'image']).optional(),
   provider: z.string().optional(),
   base_url: z
     .string()

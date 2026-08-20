@@ -32,6 +32,7 @@ services:
       XAI_API_KEY: ${XAI_API_KEY:-}
       NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      VOLCENGINE_API_KEY: ${VOLCENGINE_API_KEY:-}
     volumes:
       - ./data:/app/data
     restart: unless-stopped

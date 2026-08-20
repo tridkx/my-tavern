@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { getConnection, getDefaultConnection } from '../repo.js';
+import { getConnection, getConnectionByType } from '../repo.js';
 import { generateSpeech } from '../providers/openai.js';
 import { mediaGenLimiter } from '../active.js';
 
@@ -16,8 +16,13 @@ export function registerTtsRoutes(app: FastifyInstance) {
       })
       .parse(req.body || {});
 
-    const connection = body.connectionId ? getConnection(body.connectionId) : getDefaultConnection();
-    if (!connection) return reply.code(400).send({ error: '没有可用的模型连接，请先在设置中添加连接' });
+    // 语音合成使用专门的 TTS 连接，与对话 LLM 分开配置
+    const connection = body.connectionId ? getConnection(body.connectionId) : getConnectionByType('tts');
+    if (!connection) {
+      return reply
+        .code(400)
+        .send({ error: '未配置语音（TTS）连接，请先在 设置 → 模型连接 中新建一个用途为"语音合成"的连接' });
+    }
 
     if (!mediaGenLimiter.tryAcquire()) {
       return reply.code(429).send({ error: '生成任务过多，请稍后再试' });

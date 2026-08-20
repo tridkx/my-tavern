@@ -4,6 +4,7 @@ import type {
   Character,
   Chat,
   Connection,
+  ConnectionType,
   Group,
   GroupMember,
   GroupSettings,
@@ -54,13 +55,34 @@ export function getDefaultConnection(): Connection | undefined {
   return listConnections()[0];
 }
 
+/** 按用途取默认连接：优先该类型下 is_default 的连接，否则取该类型的第一个。 */
+export function getConnectionByType(type: ConnectionType): Connection | undefined {
+  const r = get<any>('SELECT * FROM connections WHERE type = ? AND is_default = 1 ORDER BY created_at LIMIT 1', type);
+  if (r) {
+    return {
+      ...r,
+      stop_sequences: parseJson<string[]>(r.stop_sequences, []),
+      extra_headers: parseJson<Record<string, string>>(r.extra_headers, {}),
+    };
+  }
+  const first = get<any>('SELECT * FROM connections WHERE type = ? ORDER BY created_at LIMIT 1', type);
+  return first
+    ? {
+        ...first,
+        stop_sequences: parseJson<string[]>(first.stop_sequences, []),
+        extra_headers: parseJson<Record<string, string>>(first.extra_headers, {}),
+      }
+    : undefined;
+}
+
 export function createConnection(data: Partial<Connection>): Connection {
   const id = nanoid(12);
   run(
-    `INSERT INTO connections (id, name, provider, base_url, api_key, api_key_env, model, context_window, max_tokens, temperature, top_p, top_k, frequency_penalty, presence_penalty, stop_sequences, extra_headers, is_default)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO connections (id, name, type, provider, base_url, api_key, api_key_env, model, context_window, max_tokens, temperature, top_p, top_k, frequency_penalty, presence_penalty, stop_sequences, extra_headers, is_default)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     id,
     data.name || '未命名连接',
+    data.type || 'llm',
     data.provider || 'custom',
     data.base_url || '',
     data.api_key || '',
@@ -88,8 +110,9 @@ export function updateConnection(id: string, data: Partial<Connection>): Connect
   if (!existing) return undefined;
   const merged = { ...existing, ...data };
   run(
-    `UPDATE connections SET name=?, provider=?, base_url=?, api_key=?, api_key_env=?, model=?, context_window=?, max_tokens=?, temperature=?, top_p=?, top_k=?, frequency_penalty=?, presence_penalty=?, stop_sequences=?, extra_headers=?, is_default=?, updated_at=datetime('now') WHERE id=?`,
+    `UPDATE connections SET name=?, type=?, provider=?, base_url=?, api_key=?, api_key_env=?, model=?, context_window=?, max_tokens=?, temperature=?, top_p=?, top_k=?, frequency_penalty=?, presence_penalty=?, stop_sequences=?, extra_headers=?, is_default=?, updated_at=datetime('now') WHERE id=?`,
     merged.name,
+    merged.type,
     merged.provider,
     merged.base_url,
     merged.api_key ?? '',

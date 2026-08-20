@@ -6,9 +6,9 @@
 
     <div class="card" style="margin-bottom: 16px">
       <h3>🔊 语音合成（TTS）</h3>
-      <label>模型连接</label>
+      <label>语音连接<span v-if="!ttsConns.length" class="warn">（未配置语音连接，请到 模型连接 中新建用途为"语音合成"的连接）</span></label>
       <select v-model="ttsConn">
-        <option v-for="c in app.connections" :key="c.id" :value="c.id">{{ c.name }} · {{ c.model }}</option>
+        <option v-for="c in ttsConns" :key="c.id" :value="c.id">{{ c.name }} · {{ c.model }}</option>
       </select>
       <label>文本</label>
       <textarea v-model="ttsText" placeholder="要朗读的内容"></textarea>
@@ -22,9 +22,9 @@
 
     <div class="card">
       <h3>🖼️ 图片生成（OpenAI 兼容）</h3>
-      <label>模型连接</label>
+      <label>图片连接<span v-if="!imgConns.length" class="warn">（未配置图片连接，请到 模型连接 中新建用途为"图片生成"的连接）</span></label>
       <select v-model="imgConn">
-        <option v-for="c in app.connections" :key="c.id" :value="c.id">{{ c.name }} · {{ c.model }}</option>
+        <option v-for="c in imgConns" :key="c.id" :value="c.id">{{ c.name }} · {{ c.model }}</option>
       </select>
       <label>提示词</label>
       <textarea v-model="imgPrompt" placeholder="A fantasy tavern interior, cozy, warm light"></textarea>
@@ -52,7 +52,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useAppStore } from '@/stores/app';
 import { api } from '@/api/client';
 
@@ -70,12 +70,13 @@ const imgN = ref(1);
 const imgResults = ref<any[]>([]);
 const imgBusy = ref(false);
 
+const ttsConns = computed(() => app.connections.filter((c: any) => c.type === 'tts'));
+const imgConns = computed(() => app.connections.filter((c: any) => c.type === 'image'));
+
 onMounted(async () => {
   await app.loadAll();
-  if (app.connections.length) {
-    ttsConn.value = app.connections[0].id;
-    imgConn.value = app.connections[0].id;
-  }
+  if (ttsConns.value.length) ttsConn.value = ttsConns.value[0].id;
+  if (imgConns.value.length) imgConn.value = imgConns.value[0].id;
 });
 
 async function doTts() {

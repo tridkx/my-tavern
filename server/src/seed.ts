@@ -5,7 +5,10 @@ export function seedConnections() {
   const existing = listConnections();
   if (existing.length > 0) return;
 
-  const candidates = PROVIDER_PRESETS.filter((p) => p.apiKeyEnv && process.env[p.apiKeyEnv]);
+  // 首次启动只为对话（llm）预设自动创建连接；语音/图片连接需在界面中按用途手动添加
+  const candidates = PROVIDER_PRESETS.filter(
+    (p) => (p.types?.includes('llm') ?? true) && p.apiKeyEnv && process.env[p.apiKeyEnv],
+  );
   let first = true;
   for (const preset of candidates) {
     const model = preset.models[0];

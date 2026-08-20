@@ -17,6 +17,12 @@
 
     <div v-if="editing" class="card" style="margin: 12px 0">
       <h3>{{ editing.id ? '编辑连接' : '新建连接' }}</h3>
+      <label>用途（决定该连接用于对话 / 语音 / 图片）</label>
+      <select v-model="form.type">
+        <option value="llm">对话 LLM（聊天、角色扮演）</option>
+        <option value="tts">语音合成 TTS（文字转语音）</option>
+        <option value="image">图片生成（文生图）</option>
+      </select>
       <label>名称</label>
       <input v-model="form.name" />
       <label>API 地址 (OpenAI 兼容)</label>
@@ -59,6 +65,7 @@
       <div v-for="c in app.connections" :key="c.id" class="card row">
         <div style="flex: 1">
           <strong>{{ c.name }}</strong>
+          <span class="type-tag" :class="c.type">{{ typeLabel(c.type) }}</span>
           <div class="muted">{{ c.provider }} · {{ c.model }} · {{ c.base_url }}</div>
           <div class="muted">Key: {{ c.has_api_key ? '已配置' : '未配置' }} {{ c.is_default ? ' · 默认' : '' }}</div>
         </div>
@@ -80,6 +87,7 @@ const stopText = ref('');
 const extraHeadersText = ref('');
 const form = reactive<any>({
   name: '',
+  type: 'llm',
   provider: 'custom',
   base_url: '',
   api_key: '',
@@ -102,6 +110,7 @@ onMounted(() => app.loadAll());
 function resetForm() {
   Object.assign(form, {
     name: '',
+    type: 'llm',
     provider: 'custom',
     base_url: '',
     api_key: '',
@@ -131,6 +140,7 @@ function applyPreset(p: any) {
   resetForm();
   Object.assign(form, {
     name: p.name,
+    type: p.types?.[0] || 'llm',
     provider: p.id,
     base_url: p.baseUrl,
     api_key: '',
@@ -147,6 +157,7 @@ function applyPreset(p: any) {
 function edit(c: any) {
   Object.assign(form, {
     name: c.name,
+    type: c.type || 'llm',
     provider: c.provider,
     base_url: c.base_url,
     api_key: '',
@@ -207,6 +218,10 @@ async function remove(id: string) {
   await api.del(`/api/connections/${id}`);
   await app.refreshConnections();
 }
+
+function typeLabel(t: string) {
+  return { llm: '对话', tts: '语音', image: '图片' }[t] || t;
+}
 </script>
 
 <style scoped>
@@ -220,5 +235,23 @@ async function remove(id: string) {
   display: grid;
   gap: 10px;
   margin-top: 10px;
+}
+.type-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  vertical-align: 2px;
+  background: #3a3f4b;
+  color: #cfd6e4;
+}
+.type-tag.tts {
+  background: #1f4d3a;
+  color: #7ee2a8;
+}
+.type-tag.image {
+  background: #46306b;
+  color: #d0b3ff;
 }
 </style>
