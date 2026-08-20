@@ -72,12 +72,14 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
   {
     id: 'dashscope-tts',
     name: '阿里云 CosyVoice（语音）',
-    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    baseUrl: 'https://dashscope.aliyuncs.com',
     apiKeyEnv: 'DASHSCOPE_API_KEY',
     types: ['tts'],
     models: [
+      { id: 'qwen-audio-3.0-tts-flash', name: 'Qwen-Audio TTS Flash', contextWindow: 8192, maxTokens: 4096 },
+      { id: 'qwen-audio-3.0-tts-plus', name: 'Qwen-Audio TTS Plus', contextWindow: 8192, maxTokens: 4096 },
+      { id: 'cosyvoice-v3-flash', name: 'CosyVoice V3 Flash', contextWindow: 8192, maxTokens: 4096 },
       { id: 'cosyvoice-v2', name: 'CosyVoice V2', contextWindow: 8192, maxTokens: 4096 },
-      { id: 'cosyvoice-v1', name: 'CosyVoice V1', contextWindow: 8192, maxTokens: 4096 },
     ],
   },
   {
@@ -87,8 +89,8 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     apiKeyEnv: 'DASHSCOPE_API_KEY',
     types: ['image'],
     models: [
-      { id: 'wanx2.1-t2i-turbo', name: '万相 2.1 Turbo', contextWindow: 8192, maxTokens: 4096 },
-      { id: 'wanx2.1-t2i-plus', name: '万相 2.1 Plus', contextWindow: 8192, maxTokens: 4096 },
+      { id: 'qwen-image-3.0', name: 'Qwen-Image 3.0', contextWindow: 8192, maxTokens: 4096 },
+      { id: 'wan2.7-image', name: '万相 2.7', contextWindow: 8192, maxTokens: 4096 },
     ],
   },
   {

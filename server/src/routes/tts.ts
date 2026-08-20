@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getConnection, getConnectionByType } from '../repo.js';
 import { generateSpeech } from '../providers/openai.js';
+import { generateDashScopeSpeech } from '../providers/dashscope.js';
 import { mediaGenLimiter } from '../active.js';
 
 export function registerTtsRoutes(app: FastifyInstance) {
@@ -28,11 +29,19 @@ export function registerTtsRoutes(app: FastifyInstance) {
       return reply.code(429).send({ error: '生成任务过多，请稍后再试' });
     }
     try {
-      const audio = await generateSpeech(connection, body.text, {
-        voice: body.voice,
-        speed: body.speed,
-        response_format: body.response_format,
-      });
+      // 百炼 CosyVoice/Qwen-Audio 走 DashScope 原生接口；其余走 OpenAI 兼容 /audio/speech
+      const audio =
+        connection.provider === 'dashscope-tts'
+          ? await generateDashScopeSpeech(connection, body.text, {
+              voice: body.voice,
+              speed: body.speed,
+              format: body.response_format,
+            })
+          : await generateSpeech(connection, body.text, {
+              voice: body.voice,
+              speed: body.speed,
+              response_format: body.response_format,
+            });
       const format = body.response_format || 'mp3';
       return reply
         .header('Content-Type', `audio/${format}`)

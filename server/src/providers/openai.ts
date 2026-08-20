@@ -4,14 +4,14 @@ import { ALLOW_PRIVATE_BASE_URLS, OUTBOUND_TIMEOUT_MS } from '../config.js';
 import { assertPublicHost } from '../net.js';
 
 /** 可选 SSRF 防护：默认关闭，开启时校验 base_url 的 host 非私网地址。 */
-async function assertBaseUrlAllowed(baseUrl: string) {
+export async function assertBaseUrlAllowed(baseUrl: string) {
   if (ALLOW_PRIVATE_BASE_URLS) return;
   const u = new URL(baseUrl);
   await assertPublicHost(u.hostname);
 }
 
 /** 给请求叠加超时（与调用方的 abort signal 合并）。 */
-function withTimeout(signal?: AbortSignal): AbortSignal {
+export function withTimeout(signal?: AbortSignal): AbortSignal {
   const timeout = AbortSignal.timeout(OUTBOUND_TIMEOUT_MS);
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
@@ -21,7 +21,7 @@ function withTimeout(signal?: AbortSignal): AbortSignal {
  * - 每次请求（包括重定向后的地址）都校验目标 host 非私网/环回；
  * - 手动处理重定向，避免“公网 302 到内网”绕过。
  */
-async function safeFetch(url: string, init: RequestInit & { signal?: AbortSignal } = {}): Promise<Response> {
+export async function safeFetch(url: string, init: RequestInit & { signal?: AbortSignal } = {}): Promise<Response> {
   let currentUrl = url;
   let redirects = 0;
   for (;;) {
