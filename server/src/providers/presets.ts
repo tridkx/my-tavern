@@ -92,24 +92,14 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     ],
   },
   {
-    id: 'volcengine-tts',
-    name: '火山引擎豆包语音（TTS）',
-    baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
-    apiKeyEnv: 'VOLCENGINE_API_KEY',
-    types: ['tts'],
-    models: [
-      { id: 'doubao-tts', name: '豆包语音合成', contextWindow: 8192, maxTokens: 4096 },
-    ],
-  },
-  {
     id: 'volcengine-image',
     name: '火山引擎豆包 Seedream（图片）',
     baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
     apiKeyEnv: 'VOLCENGINE_API_KEY',
     types: ['image'],
     models: [
-      { id: 'doubao-seedream-4-0', name: 'Seedream 4.0', contextWindow: 8192, maxTokens: 4096 },
-      { id: 'doubao-seedream-3-0-t2i', name: 'Seedream 3.0 T2I', contextWindow: 8192, maxTokens: 4096 },
+      { id: 'doubao-seedream-4-0-250828', name: 'Seedream 4.0', contextWindow: 8192, maxTokens: 4096 },
+      { id: 'doubao-seedream-5-0-pro-260628', name: 'Seedream 5.0 Pro', contextWindow: 8192, maxTokens: 4096 },
     ],
   },
   {

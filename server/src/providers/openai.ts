@@ -47,8 +47,8 @@ function endpoint(baseUrl: string, path: string): string {
   const base = (baseUrl || '').replace(/\/+$/, '');
   if (!base) throw new Error('未配置 API 地址 base_url');
   if (base.endsWith(path)) return base;
-  if (base.endsWith('/v1')) return `${base}${path}`;
-  if (base.endsWith('/v1/')) return `${base}${path}`;
+  // 已是版本化端点（/v1 /v2 /v3 ...）则直接拼接，避免 api/v3 被拼成 api/v3/v1
+  if (/\/v\d+$/.test(base)) return `${base}${path}`;
   return `${base}/v1${path}`;
 }
 
