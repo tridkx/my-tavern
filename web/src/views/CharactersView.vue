@@ -3,6 +3,7 @@
     <div class="row">
       <h1>角色卡</h1>
       <span class="spacer" />
+      <button @click="runAi('generate')">✨ AI 生成</button>
       <button @click="openNew">新建</button>
       <button @click="fileInput?.click()">导入</button>
       <input ref="fileInput" type="file" accept=".json,.png,.webp" style="display: none" @change="importFile" />
