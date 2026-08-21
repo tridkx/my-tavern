@@ -1,22 +1,46 @@
+/* ============================================================
+   MyTavern 设计系统 · 深夜酒馆主题
+   深紫夜色为底，绯红为主、堇紫为辅、烛金点缀
+   ============================================================ */
+
 :root {
-  --bg: #12121f;
-  --bg-soft: #181830;
-  --card: rgba(30, 32, 58, 0.72);
-  --card-solid: #1e203a;
-  --border: rgba(124, 128, 190, 0.22);
-  --border-strong: rgba(124, 128, 190, 0.4);
-  --text: #eceef7;
+  /* 底色 */
+  --bg: #0d0d18;
+  --bg-soft: #15152a;
+  --card: rgba(28, 30, 56, 0.62);
+  --card-solid: #1c1e38;
+  --border: rgba(130, 135, 200, 0.16);
+  --border-strong: rgba(130, 135, 200, 0.36);
+
+  /* 文字 */
+  --text: #eef0fa;
   --muted: #9aa1c4;
+  --faint: #676d92;
+
+  /* 品牌色 */
   --primary: #e94560;
   --primary-dark: #c73652;
-  --primary-grad: linear-gradient(135deg, #ff6b81 0%, #e94560 55%, #c73652 100%);
-  --accent: #7c6cff;
-  --accent-grad: linear-gradient(135deg, #8f7bff 0%, #6c5ce7 100%);
+  --primary-grad: linear-gradient(135deg, #ff6b81 0%, #e94560 55%, #d02a4a 100%);
+  --accent: #8b7cff;
+  --accent-grad: linear-gradient(135deg, #9d8bff 0%, #6c5ce7 100%);
+  --gold: #ffc86b;
+
+  /* 状态色 */
   --ok: #4caf50;
   --warn: #ffb74d;
+  --danger: #ff5d76;
+
+  /* 形状与阴影 */
+  --radius-sm: 10px;
   --radius: 14px;
-  --max-width: 900px;
+  --radius-lg: 20px;
+  --max-width: 920px;
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --glow-primary: 0 4px 18px rgba(233, 69, 96, 0.35);
+  --glow-accent: 0 4px 18px rgba(108, 92, 231, 0.45);
+
+  color-scheme: dark;
 }
 
 * {
@@ -32,13 +56,23 @@ body,
 
 body {
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(124, 108, 255, 0.14), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(233, 69, 96, 0.1), transparent 55%),
-    linear-gradient(180deg, #14142a 0%, #10101c 100%);
+    radial-gradient(1100px 520px at 82% -8%, rgba(124, 108, 255, 0.13), transparent 60%),
+    radial-gradient(900px 480px at -12% 108%, rgba(233, 69, 96, 0.09), transparent 55%),
+    radial-gradient(700px 420px at 50% 118%, rgba(255, 200, 107, 0.05), transparent 60%),
+    linear-gradient(180deg, #12121f 0%, #0d0d18 100%);
   background-attachment: fixed;
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'HarmonyOS Sans SC',
+    'Microsoft YaHei', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(233, 69, 96, 0.45);
+  color: #fff;
 }
 
 a {
@@ -48,32 +82,50 @@ a {
 }
 
 a:hover {
-  color: #a99bff;
+  color: #b3a6ff;
 }
+
+/* ---------------- 表单控件 ---------------- */
 
 button {
   font: inherit;
   cursor: pointer;
   border: 1px solid var(--border);
-  background: var(--card);
+  background: rgba(124, 128, 190, 0.08);
   color: var(--text);
   padding: 9px 16px;
-  border-radius: 10px;
-  transition: all 0.18s ease;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease,
+    transform 0.12s ease, color 0.18s ease, filter 0.18s ease;
 }
 
 button:hover {
-  background: rgba(124, 128, 190, 0.16);
+  background: rgba(124, 128, 190, 0.17);
   border-color: var(--border-strong);
   transform: translateY(-1px);
 }
 
 button:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
   transform: none;
 }
@@ -82,25 +134,52 @@ button.primary {
   background: var(--primary-grad);
   border-color: transparent;
   color: #fff;
-  box-shadow: 0 4px 16px rgba(233, 69, 96, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--glow-primary);
 }
 
 button.primary:hover {
-  box-shadow: 0 6px 22px rgba(233, 69, 96, 0.5);
-  filter: brightness(1.06);
+  box-shadow: 0 6px 24px rgba(233, 69, 96, 0.5);
+  filter: brightness(1.07);
+}
+
+button.danger {
+  background: rgba(233, 69, 96, 0.14);
+  border-color: rgba(233, 69, 96, 0.45);
+  color: #ff8095;
+}
+
+button.danger:hover {
+  background: rgba(233, 69, 96, 0.26);
+  border-color: rgba(233, 69, 96, 0.65);
+  box-shadow: 0 4px 16px rgba(233, 69, 96, 0.3);
+}
+
+/* 小尺寸 / 图标按钮（消息操作等密集场景） */
+button.sm {
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  border-radius: 8px;
+  gap: 4px;
 }
 
 input,
 textarea,
 select {
   font: inherit;
-  background: rgba(12, 13, 26, 0.75);
+  background: rgba(9, 10, 22, 0.72);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
   width: 100%;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+input:hover,
+textarea:hover,
+select:hover {
+  border-color: var(--border-strong);
 }
 
 input:focus,
@@ -108,12 +187,19 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(124, 108, 255, 0.18);
+  background: rgba(9, 10, 22, 0.9);
+  box-shadow: 0 0 0 3px rgba(139, 124, 255, 0.16);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--faint);
 }
 
 textarea {
   resize: vertical;
   min-height: 70px;
+  line-height: 1.55;
 }
 
 select {
@@ -126,18 +212,37 @@ select {
   padding-right: 32px;
 }
 
+input[type='checkbox'],
+input[type='radio'] {
+  width: auto;
+  accent-color: var(--accent);
+}
+
+input[type='range'] {
+  accent-color: var(--primary);
+  padding: 0;
+}
+
 label {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--muted);
   display: block;
   margin: 12px 0 5px;
   letter-spacing: 0.02em;
 }
 
+audio {
+  accent-color: var(--primary);
+  border-radius: 8px;
+}
+
+/* ---------------- 排版 ---------------- */
+
 h1 {
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   margin: 4px 0;
-  background: var(--primary-grad);
+  letter-spacing: 0.02em;
+  background: linear-gradient(120deg, #ffb3c0 0%, #ff6b81 40%, #b3a6ff 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -146,15 +251,56 @@ h1 {
 h3 {
   margin: 2px 0 8px;
   font-size: 1.02rem;
+  letter-spacing: 0.01em;
 }
 
+h4 {
+  margin: 14px 0 8px;
+  font-size: 0.92rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+pre,
+code,
+kbd {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, 'Courier New', monospace;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+
+/* ---------------- 卡片与布局 ---------------- */
+
 .card {
+  position: relative;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 18px;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--shadow);
+}
+
+/* 顶部流光细线，让卡片更有质感 */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(
+    90deg,
+    transparent 5%,
+    rgba(157, 139, 255, 0.35) 50%,
+    rgba(255, 107, 129, 0.28) 80%,
+    transparent 95%
+  );
+  pointer-events: none;
 }
 
 .page {
@@ -162,6 +308,7 @@ h3 {
   margin: 0 auto;
   padding: 20px 16px;
   padding-bottom: 88px;
+  animation: pageIn 0.25s ease;
 }
 
 .row {
@@ -186,39 +333,75 @@ h3 {
 
 .cache-stats {
   font-size: 0.78em;
-  color: var(--muted);
+  color: var(--faint);
   margin-bottom: 4px;
   text-align: right;
 }
 
-.empty {
-  text-align: center;
-  color: var(--muted);
-  padding: 40px 10px;
+/* 列表卡片：悬停轻微上浮 */
+.list-card {
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-/* mobile bottom nav */
+.list-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 标签 chip */
+.chip {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  line-height: 1.6;
+  background: rgba(139, 124, 255, 0.14);
+  border: 1px solid rgba(139, 124, 255, 0.3);
+  color: #c3b8ff;
+  white-space: nowrap;
+}
+
+/* 空状态 */
+.empty {
+  text-align: center;
+  color: var(--faint);
+  padding: 44px 16px;
+  font-size: 0.92rem;
+}
+
+.empty .empty-icon {
+  display: block;
+  font-size: 2.2rem;
+  margin-bottom: 10px;
+  filter: grayscale(0.2) drop-shadow(0 6px 16px rgba(124, 108, 255, 0.25));
+}
+
+/* ---------------- 移动端底部导航 ---------------- */
+
 .bottom-nav {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 12px;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   display: flex;
   gap: 2px;
-  background: rgba(16, 17, 34, 0.85);
-  backdrop-filter: blur(14px);
+  max-width: calc(100vw - 20px);
+  background: rgba(15, 16, 32, 0.82);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 6px 8px;
+  border-radius: 18px;
+  padding: 6px;
   z-index: 50;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .bottom-nav a {
   flex: 1;
   text-align: center;
   padding: 8px 12px;
-  border-radius: 11px;
+  border-radius: 12px;
   font-size: 0.72rem;
   color: var(--muted);
   white-space: nowrap;
@@ -227,13 +410,14 @@ h3 {
 
 .bottom-nav a:hover {
   color: var(--text);
-  background: rgba(124, 128, 190, 0.12);
+  background: rgba(124, 128, 190, 0.14);
 }
 
 .bottom-nav a.router-link-active {
   color: #fff;
   background: var(--accent-grad);
-  box-shadow: 0 4px 14px rgba(108, 92, 231, 0.45);
+  box-shadow: var(--glow-accent);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .bottom-nav .nav-logout {
@@ -245,23 +429,24 @@ h3 {
 }
 
 .bottom-nav .nav-logout:hover {
-  color: var(--primary);
+  color: var(--danger);
   background: rgba(233, 69, 96, 0.12);
   transform: none;
 }
 
-/* message bubbles */
+/* ---------------- 聊天气泡 ---------------- */
+
 .message {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  animation: fadeIn 0.2s ease;
+  gap: 10px;
+  margin-bottom: 14px;
+  animation: msgIn 0.24s cubic-bezier(0.21, 0.9, 0.35, 1);
 }
 
 .message .avatar {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
   border-radius: 50%;
   background: var(--accent-grad);
   display: flex;
@@ -269,7 +454,7 @@ h3 {
   justify-content: center;
   font-size: 0.8rem;
   overflow: hidden;
-  box-shadow: 0 3px 10px rgba(108, 92, 231, 0.35);
+  box-shadow: 0 0 0 2px rgba(139, 124, 255, 0.25), 0 4px 12px rgba(108, 92, 231, 0.35);
 }
 
 .message .avatar img {
@@ -279,24 +464,35 @@ h3 {
 }
 
 .message .bubble {
+  position: relative;
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: 4px 14px 14px 14px;
+  padding: 10px 14px;
   max-width: 85%;
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.55;
+  line-height: 1.6;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 .message.user {
   flex-direction: row-reverse;
 }
 
+.message.user .avatar {
+  background: var(--primary-grad);
+  box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.28), 0 4px 12px rgba(233, 69, 96, 0.35);
+}
+
 .message.user .bubble {
   background: var(--primary-grad);
   border-color: transparent;
+  border-radius: 14px 4px 14px 14px;
   color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
   box-shadow: 0 4px 16px rgba(233, 69, 96, 0.3);
 }
 
@@ -304,13 +500,22 @@ h3 {
   font-size: 0.72rem;
   color: var(--muted);
   margin-bottom: 3px;
+  letter-spacing: 0.02em;
 }
 
 .message.hidden-action {
   opacity: 0.55;
 }
 
-/* scrollbar */
+/* 流式生成中的呼吸光标 */
+.typing-dot {
+  display: inline-block;
+  animation: pulse 1s ease-in-out infinite;
+  color: var(--accent);
+}
+
+/* ---------------- 滚动条 ---------------- */
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -321,16 +526,23 @@ h3 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(124, 128, 190, 0.28);
+  background: rgba(130, 135, 200, 0.26);
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 128, 190, 0.45);
+  background: rgba(130, 135, 200, 0.45);
   background-clip: content-box;
 }
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(130, 135, 200, 0.3) transparent;
+}
+
+/* ---------------- 动画 ---------------- */
 
 @keyframes fadeIn {
   from {
@@ -340,5 +552,57 @@ h3 {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes msgIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes floatY {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -80,9 +80,6 @@
           </select>
         </label>
         <span class="spacer" />
-        <label style="display: flex; align-items: center; gap: 6px">
-          <input type="checkbox" :checked="group?.settings?.enemyActionVisible !== false" @change="toggleEnemyVisible" /> 敌人行动对玩家可见
-        </label>
       </div>
       <div class="row" style="margin-top: 8px">
         <select v-model="manualSpeaker" style="flex: 1">
@@ -132,8 +129,8 @@
         <div style="flex: 1; min-width: 0">
           <div class="meta">
             <strong>{{ displayName(m) }}</strong>
-            <span v-if="!m.visible_to_player" style="margin-left: 6px; color: var(--warn)">隐藏行动</span>
-            <span v-if="m.id === chat.streamingMessageId" style="margin-left: 6px">…</span>
+            <span v-if="!m.visible_to_player" class="hidden-tag">隐藏行动</span>
+            <span v-if="m.id === chat.streamingMessageId" class="typing-dot">●</span>
           </div>
           <div class="bubble" :class="{ editing: editId === m.id }">
             <textarea
@@ -148,17 +145,20 @@
               <button @click="editId = ''">取消</button>
             </div>
           </div>
-          <div class="row msg-actions" style="margin-top: 4px">
-            <button v-if="!editId || editId !== m.id" @click="startEdit(m)">编辑</button>
-            <button @click="toggleHidden(m)">{{ m.visible_to_player ? '隐藏' : '显示' }}</button>
-            <button @click="forkMessage(m)">分支</button>
-            <button @click="deleteAfter(m)">删除之后</button>
-            <button @click="chat.regenerate(m.id)">重试</button>
-            <button @click="chat.deleteMessage(m.id)">删除</button>
+          <div class="row msg-actions">
+            <button class="sm" v-if="!editId || editId !== m.id" @click="startEdit(m)">编辑</button>
+            <button class="sm" @click="toggleHidden(m)">{{ m.visible_to_player ? '隐藏' : '显示' }}</button>
+            <button class="sm" @click="forkMessage(m)">分支</button>
+            <button class="sm" @click="deleteAfter(m)">删除之后</button>
+            <button class="sm" @click="chat.regenerate(m.id)">重试</button>
+            <button class="sm danger" @click="chat.deleteMessage(m.id)">删除</button>
           </div>
         </div>
       </div>
-      <p v-if="!chat.messages.length" class="empty">还没有消息，开始聊天吧</p>
+      <p v-if="!chat.messages.length" class="empty">
+        <span class="empty-icon">🍻</span>
+        还没有消息，倒满第一杯开始聊吧
+      </p>
     </div>
 
     <div v-if="currentChat" class="composer">
@@ -475,47 +475,94 @@ async function saveEdit(id: string) {
 .chat-header {
   position: sticky;
   top: 0;
-  background: rgba(16, 17, 34, 0.75);
-  backdrop-filter: blur(10px);
+  background: rgba(13, 13, 24, 0.78);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
   z-index: 10;
-  padding: 8px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
+}
+.chat-header select {
+  min-width: 0;
 }
 .group-panel {
   margin: 8px 0;
   font-size: 0.9rem;
 }
+.group-panel details {
+  margin-top: 8px;
+}
+.group-panel summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.84rem;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+.group-panel summary:hover {
+  color: var(--text);
+}
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 8px 0 4px;
 }
 .msg-actions {
+  margin-top: 4px;
   opacity: 0;
-  transition: opacity 0.15s;
+  transform: translateY(-2px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 .message:hover .msg-actions,
 .msg-actions:focus-within {
   opacity: 1;
+  transform: none;
+}
+.hidden-tag {
+  margin-left: 6px;
+  color: var(--warn);
+  font-size: 0.9em;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 183, 77, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 183, 77, 0.08);
 }
 .composer {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 74px;
+  bottom: calc(74px + env(safe-area-inset-bottom, 0px));
   width: min(calc(100% - 24px), var(--max-width));
   display: flex;
   gap: 8px;
+  align-items: stretch;
   padding: 10px;
-  background: rgba(16, 17, 34, 0.88);
-  backdrop-filter: blur(14px);
+  background: rgba(15, 16, 32, 0.88);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   z-index: 20;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.composer:focus-within {
+  border-color: rgba(139, 124, 255, 0.45);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(139, 124, 255, 0.12);
 }
 .composer textarea {
   flex: 1;
+  background: transparent;
+  border: none;
+  padding: 6px 4px;
+}
+.composer textarea:focus {
+  box-shadow: none;
+  background: transparent;
+}
+.composer button {
+  align-self: stretch;
+  min-width: 72px;
 }
 .context-panel {
   margin: 8px 0;
@@ -526,15 +573,29 @@ async function saveEdit(id: string) {
 .context-panel pre {
   white-space: pre-wrap;
   word-break: break-word;
-  background: #12172a;
-  padding: 8px;
+  background: rgba(9, 10, 22, 0.85);
+  border: 1px solid var(--border);
+  padding: 10px;
   border-radius: 8px;
+  font-size: 0.72rem;
+  line-height: 1.5;
 }
 .member-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 0;
+  gap: 8px;
+  padding: 6px 0;
   border-bottom: 1px dashed var(--border);
+}
+.member-row select {
+  width: auto;
+  flex: 1;
+  max-width: 140px;
+}
+.member-row button {
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  border-radius: 8px;
 }
 </style>

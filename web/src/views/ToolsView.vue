@@ -4,8 +4,11 @@
       <h1>独立工具</h1>
     </div>
 
-    <div class="card" style="margin-bottom: 16px">
-      <h3>🔊 语音合成（TTS）</h3>
+    <div class="card tool-card" style="margin-bottom: 16px">
+      <div class="tool-head">
+        <span class="tool-icon">🔊</span>
+        <h3>语音合成（TTS）</h3>
+      </div>
       <label>语音连接<span v-if="!ttsConns.length" class="warn">（未配置语音连接，请到 模型连接 中新建用途为"语音合成"的连接）</span></label>
       <select v-model="ttsConn">
         <option v-for="c in ttsConns" :key="c.id" :value="c.id">{{ c.name }} · {{ c.model }}</option>
@@ -22,8 +25,11 @@
       </div>
     </div>
 
-    <div class="card">
-      <h3>🖼️ 图片生成（OpenAI 兼容）</h3>
+    <div class="card tool-card">
+      <div class="tool-head">
+        <span class="tool-icon">🖼️</span>
+        <h3>图片生成（OpenAI 兼容）</h3>
+      </div>
       <label>图片连接<span v-if="!imgConns.length" class="warn">（未配置图片连接，请到 模型连接 中新建用途为"图片生成"的连接）</span></label>
       <select v-model="imgConn">
         <option v-for="c in imgConns" :key="c.id" :value="c.id">{{ c.name }} · {{ c.model }}</option>
@@ -181,15 +187,40 @@ async function saveImage(url: string) {
 </script>
 
 <style scoped>
+.tool-card {
+  padding-top: 16px;
+}
+.tool-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.tool-head h3 {
+  margin: 0;
+}
+.tool-icon {
+  font-size: 1.3rem;
+  filter: drop-shadow(0 3px 8px rgba(233, 69, 96, 0.3));
+}
 .img-results {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 14px;
 }
 .img-result img {
   width: 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.img-result img:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
 }
 .img-result button {
   margin-top: 6px;

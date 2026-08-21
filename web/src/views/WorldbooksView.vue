@@ -9,16 +9,20 @@
     </div>
 
     <div class="wb-list">
-      <div v-for="wb in app.worldbooks" :key="wb.id" class="card row">
-        <div style="flex: 1">
+      <div v-for="wb in app.worldbooks" :key="wb.id" class="card list-card row">
+        <div style="flex: 1; min-width: 0">
           <strong>{{ wb.name }}</strong>
-          <div class="muted">{{ wb.description }}</div>
+          <div class="muted wb-desc">{{ wb.description }}</div>
         </div>
-        <button @click="open(wb)">管理</button>
-        <a :href="`/api/worldbooks/${wb.id}/export`" download>导出</a>
-        <button @click="remove(wb.id)">删除</button>
+        <button class="sm" @click="open(wb)">管理</button>
+        <a class="sm-link" :href="`/api/worldbooks/${wb.id}/export`" download>导出</a>
+        <button class="sm danger" @click="remove(wb.id)">删除</button>
       </div>
     </div>
+    <p v-if="!app.worldbooks.length" class="empty">
+      <span class="empty-icon">📖</span>
+      还没有世界书，点击"新建"或导入 Tavern 格式 JSON
+    </p>
 
     <div v-if="current" class="card" style="margin-top: 16px">
       <div class="row">
@@ -168,10 +172,37 @@ async function generateEntries() {
 <style scoped>
 .wb-list {
   display: grid;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: 12px;
+}
+.wb-desc {
+  font-size: 0.84rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.sm-link {
+  font-size: 0.74rem;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(124, 128, 190, 0.08);
+  color: var(--muted);
+  transition: all 0.18s ease;
+}
+.sm-link:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: rgba(124, 128, 190, 0.17);
 }
 .entry {
   margin-top: 10px;
+  border-left: 3px solid rgba(139, 124, 255, 0.45);
+  transition: border-color 0.18s ease;
+}
+.entry:focus-within {
+  border-left-color: var(--accent);
 }
 </style>

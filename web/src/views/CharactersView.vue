@@ -68,22 +68,31 @@
     </div>
 
     <div class="char-list">
-      <div v-for="c in app.characters" :key="c.id" class="card row">
+      <div v-for="c in app.characters" :key="c.id" class="card list-card char-card">
         <div class="avatar">
           <img v-if="c.avatar_url" :src="c.avatar_url" />
           <span v-else>{{ c.name.slice(0, 1) }}</span>
         </div>
-        <div style="flex: 1">
+        <div class="char-info">
           <strong>{{ c.name }}</strong>
-          <div class="muted">{{ c.kind === 'special' ? '专用' : '通用' }} · {{ c.tags?.join(', ') || '无标签' }}</div>
+          <span class="chip kind-chip">{{ c.kind === 'special' ? '专用' : '通用' }}</span>
+          <div class="tags">
+            <span v-for="t in c.tags || []" :key="t" class="chip">{{ t }}</span>
+            <span v-if="!c.tags?.length" class="muted no-tag">无标签</span>
+          </div>
         </div>
-        <a :href="`/api/characters/${c.id}/export`" download>JSON</a>
-        <a :href="`/api/characters/${c.id}/export-image`" download>PNG卡</a>
-        <button @click="edit(c)">编辑</button>
-        <button @click="remove(c.id)">删除</button>
+        <div class="char-actions">
+          <a class="sm-link" :href="`/api/characters/${c.id}/export`" download>JSON</a>
+          <a class="sm-link" :href="`/api/characters/${c.id}/export-image`" download>PNG卡</a>
+          <button class="sm" @click="edit(c)">编辑</button>
+          <button class="sm danger" @click="remove(c.id)">删除</button>
+        </div>
       </div>
     </div>
-    <p v-if="!app.characters.length" class="empty">暂无角色，点击“新建”或“AI 生成”</p>
+    <p v-if="!app.characters.length" class="empty">
+      <span class="empty-icon">🎭</span>
+      暂无角色，点击"新建"或"AI 生成"
+    </p>
   </div>
 </template>
 
@@ -269,23 +278,74 @@ async function executeAi() {
 <style scoped>
 .char-list {
   display: grid;
-  gap: 10px;
-  margin-top: 10px;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+@media (min-width: 720px) {
+  .char-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.char-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.char-info {
+  flex: 1;
+  min-width: 0;
+}
+.kind-chip {
+  margin-left: 8px;
+  vertical-align: 1px;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.no-tag {
+  font-size: 0.76rem;
 }
 .avatar {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-grad);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   font-weight: bold;
+  box-shadow: 0 0 0 2px rgba(139, 124, 255, 0.25), 0 4px 12px rgba(108, 92, 231, 0.3);
 }
 .avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.char-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.sm-link {
+  font-size: 0.74rem;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(124, 128, 190, 0.08);
+  color: var(--muted);
+  transition: all 0.18s ease;
+}
+.sm-link:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: rgba(124, 128, 190, 0.17);
 }
 </style>

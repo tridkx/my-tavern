@@ -42,16 +42,22 @@
 
     <div class="media-grid">
       <div v-for="m in filtered" :key="m.id" class="card media-card">
-        <img v-if="isImage(m)" :src="m.url || m.file_path" />
-        <audio v-else-if="m.kind === 'voice'" :src="m.url" controls style="width: 100%" />
-        <div class="muted" style="margin-top: 6px">{{ m.name }}</div>
-        <div class="row" style="margin-top: 6px">
-          <button @click="copyUrl(m)">复制</button>
-          <button @click="remove(m.id)">删除</button>
+        <div class="media-thumb">
+          <img v-if="isImage(m)" :src="m.url || m.file_path" />
+          <audio v-else-if="m.kind === 'voice'" :src="m.url" controls class="voice-audio" />
+          <div v-else class="voice-box">🎵</div>
+        </div>
+        <div class="media-name">{{ m.name }}</div>
+        <div class="row media-actions">
+          <button class="sm" @click="copyUrl(m)">复制</button>
+          <button class="sm danger" @click="remove(m.id)">删除</button>
         </div>
       </div>
     </div>
-    <p v-if="!filtered.length" class="empty">暂无资源</p>
+    <p v-if="!filtered.length" class="empty">
+      <span class="empty-icon">🖼️</span>
+      这个分类下还没有资源
+    </p>
   </div>
 </template>
 
@@ -132,17 +138,79 @@ async function copyUrl(m: any) {
 <style scoped>
 .tabs {
   margin: 12px 0;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  background: rgba(9, 10, 22, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+}
+.tabs button {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 7px 14px;
+  font-size: 0.82rem;
+  border-radius: 9px;
+}
+.tabs button:hover {
+  transform: none;
+  background: rgba(124, 128, 190, 0.14);
+}
+.tabs button.primary {
+  box-shadow: 0 2px 10px rgba(233, 69, 96, 0.35);
 }
 .media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
 }
-.media-card img {
-  width: 100%;
+.media-card {
+  padding: 10px;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.media-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-lg);
+}
+.media-thumb {
   aspect-ratio: 1;
-  object-fit: cover;
   border-radius: 8px;
-  background: #12172a;
+  overflow: hidden;
+  background: rgba(9, 10, 22, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.media-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s ease;
+}
+.media-card:hover .media-thumb img {
+  transform: scale(1.05);
+}
+.voice-box {
+  font-size: 2rem;
+  opacity: 0.6;
+}
+.voice-audio {
+  width: 100%;
+}
+.media-name {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.media-actions {
+  margin-top: 6px;
+  gap: 6px;
 }
 </style>

@@ -62,17 +62,23 @@
     </div>
 
     <div class="card-list">
-      <div v-for="c in app.connections" :key="c.id" class="card row">
-        <div style="flex: 1">
+      <div v-for="c in app.connections" :key="c.id" class="card list-card row">
+        <div style="flex: 1; min-width: 0">
           <strong>{{ c.name }}</strong>
           <span class="type-tag" :class="c.type">{{ typeLabel(c.type) }}</span>
-          <div class="muted">{{ c.provider }} · {{ c.model }} · {{ c.base_url }}</div>
-          <div class="muted">Key: {{ c.has_api_key ? '已配置' : '未配置' }} {{ c.is_default ? ' · 默认' : '' }}</div>
+          <span v-if="c.is_default" class="chip default-chip">默认</span>
+          <div class="muted conn-meta">{{ c.provider }} · {{ c.model }}</div>
+          <div class="muted conn-meta">{{ c.base_url }}</div>
+          <div class="muted conn-meta">Key: {{ c.has_api_key ? '已配置' : '未配置' }}</div>
         </div>
-        <button @click="edit(c)">编辑</button>
-        <button @click="remove(c.id)">删除</button>
+        <button class="sm" @click="edit(c)">编辑</button>
+        <button class="sm danger" @click="remove(c.id)">删除</button>
       </div>
     </div>
+    <p v-if="!app.connections.length" class="empty">
+      <span class="empty-icon">🔌</span>
+      还没有模型连接，点击上方预设快速创建
+    </p>
   </div>
 </template>
 
@@ -227,31 +233,53 @@ function typeLabel(t: string) {
 <style scoped>
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 8px;
   margin-top: 8px;
 }
+.preset-grid button {
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  border-radius: var(--radius-sm);
+}
 .card-list {
   display: grid;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 12px;
+  margin-top: 12px;
 }
 .type-tag {
   display: inline-block;
   margin-left: 8px;
-  padding: 1px 8px;
-  border-radius: 10px;
-  font-size: 12px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
   vertical-align: 2px;
-  background: #3a3f4b;
+  background: rgba(124, 128, 190, 0.16);
+  border: 1px solid rgba(124, 128, 190, 0.3);
   color: #cfd6e4;
 }
 .type-tag.tts {
-  background: #1f4d3a;
+  background: rgba(76, 175, 80, 0.14);
+  border-color: rgba(76, 175, 80, 0.4);
   color: #7ee2a8;
 }
 .type-tag.image {
-  background: #46306b;
+  background: rgba(139, 124, 255, 0.14);
+  border-color: rgba(139, 124, 255, 0.4);
   color: #d0b3ff;
+}
+.default-chip {
+  margin-left: 6px;
+  vertical-align: 2px;
+  background: rgba(255, 200, 107, 0.12);
+  border-color: rgba(255, 200, 107, 0.35);
+  color: var(--gold);
+}
+.conn-meta {
+  font-size: 0.78rem;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
